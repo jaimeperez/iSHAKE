@@ -1,7 +1,8 @@
 iSHAKE
 ======
 
-This is an implementation of the _iSHAKE_ incremental hashing algorithm, 
+This is an implementation of the [_iSHAKE_ incremental hashing
+algorithm](http://csrc.nist.gov/groups/ST/hash/sha-3/Aug2014/documents/gligoroski_paper_sha3_2014_workshop.pdf), 
 based on the relatively new _SHA3_ standard and particularly on the *shake*
 __extendable-output functions__ included in
 [NIST FIPS 202](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf).
