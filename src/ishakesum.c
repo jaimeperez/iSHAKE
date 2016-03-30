@@ -64,19 +64,7 @@ int main(int argc, char *argv[]) {
         fp = fopen(filename, "r");
     }
 
-    // read input in chunk, until finished or memory exhausted
-    buf = malloc(BLOCK_SIZE);
-    unsigned long b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
-    while (b_read == (unsigned long) BLOCK_SIZE) {
-        blocks++;
-        buf = realloc(buf, (size_t)blocks * BLOCK_SIZE + BLOCK_SIZE);
-        if (buf == NULL) {
-            printf("Input too large.\n");
-            return -1;
-        }
-        b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
-    }
-
+    // validate output bits and algorithm version
     switch (shake) {
         case 256:
             if (bits == 0) {
@@ -105,6 +93,20 @@ int main(int argc, char *argv[]) {
                 }
             }
     }
+
+    // read input in chunk, until finished or memory exhausted
+    buf = malloc(BLOCK_SIZE);
+    unsigned long b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
+    while (b_read == (unsigned long) BLOCK_SIZE) {
+        blocks++;
+        buf = realloc(buf, (size_t)blocks * BLOCK_SIZE + BLOCK_SIZE);
+        if (buf == NULL) {
+            printf("Input too large.\n");
+            return -1;
+        }
+        b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
+    }
+
     out = malloc(bits / 8);
     ishake_hash(buf, blocks * BLOCK_SIZE + b_read, out, (uint16_t) bits);
 
