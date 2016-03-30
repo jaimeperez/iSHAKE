@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     uint8_t *out;
     char *output;
 
-    int shake = 0, sha = 0, blocks = 0;
+    int shake = 0, sha = 0, blocks = 0, hex_input = 0;
     unsigned long bytes = 0;
     char *filename = "";
 
@@ -37,6 +37,8 @@ int main(int argc, char *argv[]) {
         } else if (strcmp("--sha3-512", argv[i]) == 0) {
             sha = 512;
             shake = 0;
+        } else if (strcmp("--hex", argv[i]) == 0) {
+            hex_input = 1;
         } else if (strcmp("--bytes", argv[i]) == 0) {
             char** invalid;
             invalid = malloc(sizeof(char**));
@@ -85,6 +87,19 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
+    }
+
+    if (hex_input) {
+        uint8_t *input;
+        // convert the input to bytes
+        hex2bin((char sour**)&input, buf, blocks * BLOCK_SIZE + b_read);
+
+        // make sure the algorithm uses half of the length read
+        unsigned long l = (blocks * BLOCK_SIZE + b_read) / 2;
+        b_read = l - blocks * BLOCK_SIZE;
+
+        free(buf);
+        buf = input;
     }
 
     if (shake != 0) { // we are asked for a shake hash (extensible output)
