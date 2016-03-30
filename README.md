@@ -41,9 +41,9 @@ allows the computations of both SHA3 and SHAKE digest, with the latter allowing
     * Additionally, a file can be specified as the source of the data to hash.
       Input can also be passed into the utility by using a UNIX pipe. 
 
- * `ishakesum` the equivalent to the UNIX utility _shasum_ for iSHAKE. It has
-  two different variants, iSHAKE128 and iSHAKE256, both allowing extendable 
-  output. The following parameters are supported:
+* `ishakesum` the equivalent to the UNIX utility _shasum_ for iSHAKE. It has
+two different variants, iSHAKE128 and iSHAKE256, both allowing extendable 
+output. The following parameters are supported:
   
     * `--128` to select the 128-bit equivalent version of the algorithm. 
     Output length defaults to 2688 bits.
