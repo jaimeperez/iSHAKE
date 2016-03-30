@@ -30,4 +30,6 @@
 
 void bin2hex(char **output, uint8_t *data, int len);
 
+void hex2bin(char **output, uint8_t *data, int len);
+
 #endif //ISHAKE_UTILS_H
