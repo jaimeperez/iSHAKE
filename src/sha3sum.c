@@ -1,24 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
 #include "../lib/libkeccak-tiny/keccak-tiny.h"
+#include "utils.h"
 
 #define BLOCK_SIZE 1024
-
-void hexdump(char **output, uint8_t *data, int len, char filename[]) {
-    char *o;
-    char h[3];
-    int j = 0;
-
-    o = malloc(len*2 + strlen(filename) + 4);
-    for (int i = 0; i < len; i++) {
-        snprintf(h, 3, "%02x", data[i]);
-        memcpy(o + j, h, 2);
-        j += 2;
-    }
-    snprintf(o + (len * 2), strlen(filename) + 4, " - %s", filename);
-    *output = o;
-}
 
 int main(int argc, char *argv[]) {
     FILE *fp;
@@ -146,8 +133,8 @@ int main(int argc, char *argv[]) {
     }
 
     // convert to hex and print
-    hexdump(&output, out, (int)bytes, filename);
-    printf("%s\n", output);
+    bin2hex(&output, out, (int)bytes);
+    printf("%s - %s\n", output, filename);
 
     fclose(fp);
     free(buf);
