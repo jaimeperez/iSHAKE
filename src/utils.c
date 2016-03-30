@@ -31,8 +31,7 @@
 #include "utils.h"
 
 void bin2hex(char **output, uint8_t *data, int len) {
-
-    *output = calloc((size_t)len * 2 + 1, sizeof(unsigned char));
+    *output = calloc((size_t)len * 2 + 1, sizeof(char));
     for (int i = 0; i < len; i++) {
         snprintf(*output + (i*2), 3, "%02x", data[i]);
     }
