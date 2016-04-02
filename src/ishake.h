@@ -82,4 +82,9 @@ int ishake_hash(unsigned char *data,
                 uint8_t *hash,
                 uint16_t hashbitlen);
 
+/**
+ * Cleanup the resources attached to the passed iSHAKE structure.
+ */
+void ishake_cleanup(struct IShakeHash *is);
+
 #endif // _ISHAKE_PARTIAL_H
