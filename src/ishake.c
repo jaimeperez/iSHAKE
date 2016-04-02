@@ -130,7 +130,7 @@ int ishake_init(struct IShakeHash *is, uint32_t blk_size, uint16_t hashbitlen) {
 }
 
 int ishake_append(struct IShakeHash *is, unsigned char *data, uint64_t len) {
-    if (!is || !data || !len) return -1;
+    if (!is || !data) return -1;
 
     unsigned char *input;
     input = malloc(len + is->remaining);
@@ -206,7 +206,7 @@ int ishake_final(struct IShakeHash *is, uint8_t *output) {
 
     if (output == NULL || is == NULL) return -1;
 
-    if (is->remaining) { // hash the last remaining data
+    if (is->remaining || !is->proc_bytes) { // hash the last remaining data
         uint64_t *bhash;
         bhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
         is->block_no++;
@@ -216,7 +216,7 @@ int ishake_final(struct IShakeHash *is, uint8_t *output) {
         is->proc_bytes += is->remaining;
         is->remaining = 0;
         free(bhash);
-        free(is->buf);
+        if (is->buf) free(is->buf);
         is->buf = NULL;
     }
 
