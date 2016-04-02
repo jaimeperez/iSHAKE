@@ -30,14 +30,14 @@
 
 #include "utils.h"
 
-void bin2hex(char **output, uint8_t *data, int len) {
+void bin2hex(char **output, uint8_t *data, unsigned long len) {
     *output = calloc((size_t)len * 2 + 1, sizeof(char));
     for (int i = 0; i < len; i++) {
         snprintf(*output + (i*2), 3, "%02x", data[i]);
     }
 }
 
-void hex2bin(char **output, uint8_t *data, int len) {
+void hex2bin(char **output, uint8_t *data, unsigned long len) {
     *output = calloc((size_t)(len / 2) + 1, sizeof(char));
     for (int i = 0; i < len/2; i++) {
         uint8_t b[3];

@@ -28,8 +28,8 @@
 #ifndef ISHAKE_UTILS_H
 #define ISHAKE_UTILS_H
 
-void bin2hex(char **output, uint8_t *data, int len);
+void bin2hex(char **output, uint8_t *data, unsigned long len);
 
-void hex2bin(char **output, uint8_t *data, int len);
+void hex2bin(char **output, uint8_t *data, unsigned long len);
 
 #endif //ISHAKE_UTILS_H
