@@ -1,6 +1,9 @@
 iSHAKE
 ======
 
+![alt text](https://travis-ci.org/jaimeperez/iSHAKE.svg?branch=master "Build 
+status")
+
 This is an implementation of the [_iSHAKE_ incremental hashing
 algorithm](http://csrc.nist.gov/groups/ST/hash/sha-3/Aug2014/documents/gligoroski_paper_sha3_2014_workshop.pdf), 
 based on the relatively new _SHA3_ standard and particularly on the *shake*
