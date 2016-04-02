@@ -5,13 +5,13 @@
 #include "ishake.h"
 #include "utils.h"
 
-#define BLOCK_SIZE 1024
+#define BLOCK_SIZE 32768
 
 int main(int argc, char *argv[]) {
     FILE *fp;
     uint8_t *buf;
-    uint8_t *out;
-    char *output;
+    uint8_t *bo;
+    char *ho;
 
     int shake = 0, blocks = 0;
     unsigned long bits = 0;
@@ -94,29 +94,38 @@ int main(int argc, char *argv[]) {
             }
     }
 
-    // read input in chunk, until finished or memory exhausted
-    buf = malloc(BLOCK_SIZE);
-    unsigned long b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
-    while (b_read == (unsigned long) BLOCK_SIZE) {
-        blocks++;
-        buf = realloc(buf, (size_t)blocks * BLOCK_SIZE + BLOCK_SIZE);
-        if (buf == NULL) {
-            printf("Input too large.\n");
-            return -1;
-        }
-        b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
+    // initialize ishake
+    struct IShakeHash *is;
+    is = malloc(sizeof(struct IShakeHash));
+    if (ishake_init(is, BLOCK_SIZE, (uint16_t) bits)) {
+        return -1;
     }
 
-    out = malloc(bits / 8);
-    ishake_hash(buf, blocks * BLOCK_SIZE + b_read, out, (uint16_t) bits);
+    // read input and process it on the go
+    buf = malloc(BLOCK_SIZE);
+    unsigned long b_read = fread(buf, 1, BLOCK_SIZE, fp);
+    while (b_read == (unsigned long) BLOCK_SIZE) {
+        blocks++;
+        if (ishake_append(is, buf, BLOCK_SIZE)) return -1;
+        b_read = fread(buf, 1, BLOCK_SIZE, fp);
+    }
+
+    // add the last leftovers of input
+    if (ishake_append(is, buf, b_read)) return -1;
+
+    // finish computations and get the hash
+    bo = malloc(bits / 8);
+    ishake_final(is, bo);
 
     // convert to hex and print
-    bin2hex(&output, out, (int) bits / 8);
-    printf("%s - %s\n", output, filename);
+    bin2hex(&ho, bo, bits / 8);
+    printf("%s - %s\n", ho, filename);
 
+    // clean
+    ishake_cleanup(is);
     fclose(fp);
     free(buf);
-    free(out);
-    free(output);
+    free(bo);
+    free(ho);
     return 0;
 }
