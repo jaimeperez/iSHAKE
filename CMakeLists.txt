@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(iSHAKE)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++0x")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 set(ISHAKE_UTILS src/utils.c)
 set(LIBKECCAK lib/libkeccak-tiny/keccak-tiny.c)
