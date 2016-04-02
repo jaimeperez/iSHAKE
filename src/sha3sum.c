@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     if (hex_input) {
         uint8_t *input;
         // convert the input to bytes
-        hex2bin((char sour**)&input, buf, blocks * BLOCK_SIZE + b_read);
+        hex2bin((char **)&input, buf, blocks * BLOCK_SIZE + b_read);
 
         // make sure the algorithm uses half of the length read
         unsigned long l = (blocks * BLOCK_SIZE + b_read) / 2;
