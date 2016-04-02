@@ -26,6 +26,7 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 #ifndef _ISHAKE_PARTIAL_H
