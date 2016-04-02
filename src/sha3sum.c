@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     unsigned long b_read = fread(buf + blocks * BLOCK_SIZE, 1, BLOCK_SIZE, fp);
     while (b_read == BLOCK_SIZE) {
         blocks++;
-        buf = realloc(buf, blocks * BLOCK_SIZE + BLOCK_SIZE);
+        buf = realloc(buf, (size_t)blocks * BLOCK_SIZE + BLOCK_SIZE);
         if (buf == NULL) {
             printf("Input too large.\n");
             return -1;
