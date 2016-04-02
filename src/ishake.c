@@ -72,7 +72,7 @@ void _hash_block(
     memcpy(data, block, blen);
 
     // append the block index
-    for (int i = 0; i < 8; i++) {
+    for (i = 0; i < 8; i++) {
         *(data + blen + i) = (uint8_t) (bidx >> ((8 - i - 1) * 8));
     }
 
@@ -205,8 +205,9 @@ int ishake_update(struct IShakeHash *is,
 
 
 int ishake_final(struct IShakeHash *is, uint8_t *output) {
-
     if (output == NULL || is == NULL) return -1;
+
+    int i;
 
     if (is->remaining || !is->proc_bytes) { // hash the last remaining data
         uint64_t *bhash;
@@ -223,7 +224,7 @@ int ishake_final(struct IShakeHash *is, uint8_t *output) {
     }
 
     // copy the resulting digest into output
-    for (int i = 0; i < is->output_len / 8; i++) {
+    for (i = 0; i < is->output_len / 8; i++) {
         *(output + (i * 8) + 7) = (uint8_t) *(is->hash + i);
         *(output + (i * 8) + 6) = (uint8_t) (*(is->hash + i) >> 8);
         *(output + (i * 8) + 5) = (uint8_t) (*(is->hash + i) >> 16);
