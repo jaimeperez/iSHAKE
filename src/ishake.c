@@ -66,6 +66,7 @@ void _hash_block(
         uint16_t hlen,
         hash_function func
 ) {
+    int i;
     uint8_t *data;
     data = calloc(blen + sizeof(uint64_t), sizeof(uint8_t));
     memcpy(data, block, blen);
@@ -82,7 +83,7 @@ void _hash_block(
     free(data);
 
     // cast the resulting hash to (uint64_t *) for simplicity
-    for (int i = 0; i < hlen / 8; i++) {
+    for (i = 0; i < hlen / 8; i++) {
         *(hash + i)  = (uint64_t) *(buf + (8 * i)) << 56;
         *(hash + i) |= (uint64_t) *(buf + (8 * i) + 1) << 48;
         *(hash + i) |= (uint64_t) *(buf + (8 * i) + 2) << 40;
@@ -99,7 +100,8 @@ void _hash_block(
  * Combine a and b using a group operation op, and store the result in a.
  */
 void _combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
-    for (int i = 0; i < len; i++) {
+    int i;
+    for (i = 0; i < len; i++) {
         *(out + i) = op(*(out + i), *(in + i), UINT64_MAX);
     }
 }

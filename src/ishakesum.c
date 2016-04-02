@@ -14,12 +14,12 @@ int main(int argc, char *argv[]) {
     uint8_t *bo;
     char *ho;
 
-    int shake = 0, blocks = 0;
+    int i = 0, shake = 0, blocks = 0, hex_input = 0;
     unsigned long bits = 0;
     char *filename = "";
 
     // parse arguments
-    for (int i = 1; i < argc; i++) {
+    for (i = 1; i < argc; i++) {
         if (strcmp("--128", argv[i]) == 0) {
             shake = 128;
         } else if (strcmp("--256", argv[i]) == 0) {
