@@ -1,7 +1,7 @@
 sudo: required
 dist: trusty
 language: c
-before_install: phpenv install 5.5.29
+before_install: sudo apt-get install -qq php
 addons:
  apt:
    sources:
