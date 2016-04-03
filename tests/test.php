@@ -14,7 +14,7 @@ foreach ($files as $file) {
     preg_match('#tests/\w+/(\w+\d+)#', $file, $matches);
     $algo = $ALGOS[$matches[1]];
     $bytes = 0;
-    $intlen = 0;
+    $inlen = 0;
     $msg = '';
     $out = '';
 
@@ -50,7 +50,7 @@ foreach ($files as $file) {
             $inlen = (intval($matches[1]) / 8) * 2;
         }
 
-        if (preg_match('/^[Input Length = (\d+)]$/', $line, $matches)) {
+        if (preg_match('/^\[Input Length = (\d+)\]$/', $line, $matches)) {
             $inlen = (intval($matches[1]) / 8) * 2;
         }
 
