@@ -66,13 +66,12 @@ void _hash_block(
         uint16_t hlen,
         hash_function func
 ) {
-    int i;
     uint8_t *data;
     data = calloc(blen + sizeof(uint64_t), sizeof(uint8_t));
     memcpy(data, block, blen);
 
     // append the block index
-    for (i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++) {
         *(data + blen + i) = (uint8_t) (bidx >> ((8 - i - 1) * 8));
     }
 
@@ -83,7 +82,7 @@ void _hash_block(
     free(data);
 
     // cast the resulting hash to (uint64_t *) for simplicity
-    for (i = 0; i < hlen / 8; i++) {
+    for (int i = 0; i < hlen / 8; i++) {
         *(hash + i)  = (uint64_t) *(buf + (8 * i)) << 56;
         *(hash + i) |= (uint64_t) *(buf + (8 * i) + 1) << 48;
         *(hash + i) |= (uint64_t) *(buf + (8 * i) + 2) << 40;
@@ -100,8 +99,7 @@ void _hash_block(
  * Combine a and b using a group operation op, and store the result in a.
  */
 void _combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
-    int i;
-    for (i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++) {
         *(out + i) = op(*(out + i), *(in + i), UINT64_MAX);
     }
 }
@@ -207,8 +205,6 @@ int ishake_update(struct IShakeHash *is,
 int ishake_final(struct IShakeHash *is, uint8_t *output) {
     if (output == NULL || is == NULL) return -1;
 
-    int i;
-
     if (is->remaining || !is->proc_bytes) { // hash the last remaining data
         uint64_t *bhash;
         bhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
@@ -224,7 +220,7 @@ int ishake_final(struct IShakeHash *is, uint8_t *output) {
     }
 
     // copy the resulting digest into output
-    for (i = 0; i < is->output_len / 8; i++) {
+    for (int i = 0; i < is->output_len / 8; i++) {
         *(output + (i * 8) + 7) = (uint8_t) *(is->hash + i);
         *(output + (i * 8) + 6) = (uint8_t) (*(is->hash + i) >> 8);
         *(output + (i * 8) + 5) = (uint8_t) (*(is->hash + i) >> 16);
