@@ -1,7 +1,7 @@
 sudo: required
 dist: trusty
 language: c
-before_install: sudo apt-get install -qq php
+before_install: sudo apt-get install -qq php5
 addons:
  apt:
    sources:
