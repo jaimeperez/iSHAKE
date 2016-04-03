@@ -1,7 +1,7 @@
 sudo: required
 dist: trusty
 language: c
-install: phpenv install php-5.5.1
+before_install: phpenv install --releases
 addons:
  apt:
    sources:
