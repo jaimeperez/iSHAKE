@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     uint8_t *out;
     char *output;
 
-    int shake = 0, sha = 0, blocks = 0, hex_input = 0;
+    int shake = 0, sha = 0, blocks = 0, hex_input = 0, quiet = 0;
     unsigned long bytes = 0;
     char *filename = "";
 
@@ -39,6 +39,8 @@ int main(int argc, char *argv[]) {
             shake = 0;
         } else if (strcmp("--hex", argv[i]) == 0) {
             hex_input = 1;
+        } else if (strcmp("--quiet", argv[i]) == 0) {
+            quiet = 1;
         } else if (strcmp("--bytes", argv[i]) == 0) {
             char** invalid;
             invalid = malloc(sizeof(char**));
@@ -149,7 +151,11 @@ int main(int argc, char *argv[]) {
 
     // convert to hex and print
     bin2hex(&output, out, (int)bytes);
-    printf("%s - %s\n", output, filename);
+    if (quiet) {
+        printf("%s\n", output);
+    } else {
+        printf("%s - %s\n", output, filename);
+    }
 
     fclose(fp);
     free(buf);
