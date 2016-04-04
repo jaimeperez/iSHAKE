@@ -13,6 +13,7 @@ int main(int argc, char *argv[]) {
     uint8_t *buf;
     uint8_t *bo;
     char *ho;
+    uint32_t input_block_size = BLOCK_SIZE;
 
     int shake = 0, blocks = 0, hex_input = 0;
     unsigned long bits = 0;
@@ -24,6 +25,9 @@ int main(int argc, char *argv[]) {
             shake = 128;
         } else if (strcmp("--256", argv[i]) == 0) {
             shake = 256;
+        } else if (strcmp("--hex", argv[i]) == 0) {
+            hex_input = 1;
+            input_block_size *= 2;
         } else if (strcmp("--bits", argv[i]) == 0) {
             char **invalid;
             invalid = malloc(sizeof(char **));
@@ -103,16 +107,21 @@ int main(int argc, char *argv[]) {
     }
 
     // read input and process it on the go
-    buf = malloc(BLOCK_SIZE);
-    unsigned long b_read = fread(buf, 1, BLOCK_SIZE, fp);
-    while (b_read == (unsigned long) BLOCK_SIZE) {
-        blocks++;
-        if (ishake_append(is, buf, BLOCK_SIZE)) return -1;
-        b_read = fread(buf, 1, BLOCK_SIZE, fp);
-    }
+    buf = malloc(input_block_size);
+    unsigned long b_read;
 
-    // add the last leftovers of input
-    if (ishake_append(is, buf, b_read)) return -1;
+    do {
+        blocks++;
+        b_read = fread(buf, 1, input_block_size, fp);
+        if (hex_input) {
+            uint8_t *raw_data;
+            hex2bin((char **)&raw_data, buf, b_read);
+            if (ishake_append(is, raw_data, b_read / 2)) return -1;
+            free(raw_data);
+        } else {
+            if (ishake_append(is, buf, b_read)) return -1;
+        }
+    } while (b_read == (unsigned long) input_block_size);
 
     // finish computations and get the hash
     bo = malloc(bits / 8);
