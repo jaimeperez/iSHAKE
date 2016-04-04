@@ -1,19 +1,33 @@
 <?php
 
-$files = glob('tests/shake/*.rsp');
+$files = glob('tests/*shake/*.rsp');
 
-$ALGOS = array(
+$_CMDS = array(
+    'shake' => './sha3sum %algo% --hex --quiet --bytes %bytes% %file%',
+    'ishake' => './ishakesum %algo% --hex --quiet --bits %bits% %file%',
+);
+$_ALGOS = array(
     'SHAKE128' => '--shake128',
     'SHAKE256' => '--shake256',
+    'iSHAKE128' => '--128',
+    'iSHAKE256' => '--256',
+);
+$_PATTERNS = array(
+    '/%algo%/',
+    '/%bytes%/',
+    '/%bits%/',
+    '/%file%/',
 );
 
 $return = 0;
 
 foreach ($files as $file) {
 
-    preg_match('#tests/\w+/(\w+\d+)#', $file, $matches);
-    $algo = $ALGOS[$matches[1]];
+    preg_match('#tests/(\w+)/(\w+\d+)#', $file, $matches);
+    $base_cmd = $_CMDS[$matches[1]];
+    $algo = $_ALGOS[$matches[2]];
     $bytes = 0;
+    $bits = 0;
     $inlen = 0;
     $msg = '';
     $out = '';
@@ -22,6 +36,8 @@ foreach ($files as $file) {
 
     echo "Processing $file...\n";
     while ($line = fgets($fd)) {
+
+
         $line = trim($line);
         if (strpos($line, '#') === 0) {
             continue; // comment, skip
@@ -43,7 +59,8 @@ foreach ($files as $file) {
         }
 
         if (preg_match('/^\[?Outputlen = (\d+)\]?$/', $line, $matches)) {
-            $bytes = intval($matches[1]) / 8;
+            $bits = intval($matches[1]);
+            $bytes = $bits / 8;
         }
 
         if (preg_match('/^Len = (\d+)$/', $line, $matches)) {
@@ -64,7 +81,8 @@ foreach ($files as $file) {
             $msg = substr($msg, 0, $inlen);
             $tmp = tempnam(sys_get_temp_dir(), 'shake-build-');
             file_put_contents($tmp, $msg);
-            $cmd = './sha3sum --hex '.$algo.' --bytes '.$bytes." --quiet $tmp";
+            $replacements = array($algo, $bytes, $bits, $tmp);
+            $cmd = preg_replace($_PATTERNS, $replacements, $base_cmd);
             $hash = trim(shell_exec($cmd));
             if ($hash !== $out) {
                 $return = 1;
@@ -77,4 +95,3 @@ foreach ($files as $file) {
 }
 
 exit($return);
-
