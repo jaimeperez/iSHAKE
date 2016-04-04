@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     char *ho;
     uint32_t input_block_size = BLOCK_SIZE;
 
-    int shake = 0, blocks = 0, hex_input = 0;
+    int shake = 0, blocks = 0, hex_input = 0, quiet = 0;
     unsigned long bits = 0;
     char *filename = "";
 
@@ -28,6 +28,8 @@ int main(int argc, char *argv[]) {
         } else if (strcmp("--hex", argv[i]) == 0) {
             hex_input = 1;
             input_block_size *= 2;
+        } else if (strcmp("--quiet", argv[i]) == 0) {
+            quiet = 1;
         } else if (strcmp("--bits", argv[i]) == 0) {
             char **invalid;
             invalid = malloc(sizeof(char **));
@@ -129,7 +131,11 @@ int main(int argc, char *argv[]) {
 
     // convert to hex and print
     bin2hex(&ho, bo, bits / 8);
-    printf("%s - %s\n", ho, filename);
+    if (quiet) {
+        printf("%s\n", ho);
+    } else {
+        printf("%s - %s\n", ho, filename);
+    }
 
     // clean
     ishake_cleanup(is);
