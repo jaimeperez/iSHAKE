@@ -122,6 +122,7 @@ int ishake_init(struct IShakeHash *is, uint32_t blk_size, uint16_t hashbitlen) {
     is->block_size = blk_size;
     is->proc_bytes = 0;
     is->remaining = 0;
+    is->buf = 0;
     is->output_len = hashbitlen / (uint16_t)8;
     is->hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
 
