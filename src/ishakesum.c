@@ -17,11 +17,11 @@ void panic(char *program, char *format, int argc, ...) {
     va_list valist;
     va_start(valist, argc);
 
-    printf("%s: ", program);
+    fprintf(stderr, "%s: ", program);
     if (argc > 0) {
-        vprintf(format, valist);
+        vfprintf(stderr, format, valist);
     } else {
-        printf("%s\n", format);
+        fprintf(stderr, "%s\n", format);
     }
 
     exit(EXIT_FAILURE);
