@@ -6,6 +6,7 @@
 #include "ishake.h"
 #include "utils.h"
 
+// default block size
 #define BLOCK_SIZE 32768
 
 int main(int argc, char *argv[]) {
@@ -13,7 +14,7 @@ int main(int argc, char *argv[]) {
     uint8_t *buf;
     uint8_t *bo;
     char *ho;
-    uint32_t input_block_size = BLOCK_SIZE;
+    uint32_t block_size = BLOCK_SIZE;
 
     int shake = 0, blocks = 0, hex_input = 0, quiet = 0;
     unsigned long bits = 0;
@@ -27,24 +28,39 @@ int main(int argc, char *argv[]) {
             shake = 256;
         } else if (strcmp("--hex", argv[i]) == 0) {
             hex_input = 1;
-            input_block_size *= 2;
         } else if (strcmp("--quiet", argv[i]) == 0) {
             quiet = 1;
         } else if (strcmp("--bits", argv[i]) == 0) {
-            char **invalid;
-            invalid = malloc(sizeof(char **));
-            bits = strtoul(argv[i + 1], invalid, 10);
-            if (bits == 0 && argv[i + 1] == *invalid) {
+            char *bits_str;
+            bits = strtoul(argv[i + 1], &bits_str, 10);
+            if (argv[i + 1] == bits_str) {
                 printf("--bits must be followed by the amount of bits "
                                "desired as output.\n");
+                return -1;
+            }
+            if (bits == 0) {
+                printf("--bits can't be zero.\n");
                 return -1;
             }
             if (bits % 64) {
                 printf("--bits must be a multiple of 64.\n");
                 return -1;
             }
-            i++;
+            i++; // two arguments consumed, advance the pointer!
             continue;
+        } else if (strcmp("--block-size", argv[i]) == 0) {
+            char *block_str;
+            block_size = (uint32_t)strtoul(argv[i + 1], &block_str, 10);
+            if (argv[i + 1] == block_str) {
+                printf("--block-size must be followed by the amount of bytes "
+                               "desired as block size.\n");
+                return -1;
+            }
+            if (block_size == 0) {
+                printf("--block-size can't be zero.\n");
+                return -1;
+            }
+            i++; // two arguments consumed, advance the pointer!
         } else {
             if (strlen(argv[i]) > 2) {
                 if ((argv[i][0] == '-') && (argv[i][1] == '-')) {
@@ -59,6 +75,13 @@ int main(int argc, char *argv[]) {
             filename = argv[i];
         }
     }
+
+    /*
+     * Obtain the input block size we should read. If input is hex,
+     * hex_input == 1 and therefore the input block size will double. If not,
+     * hex_input == 0 and the input will have the same size as hash blocks.
+     */
+    uint32_t input_block_size = block_size + (block_size * hex_input);
 
     // open appropriate input source
     if (strlen(filename) == 0) {
@@ -104,7 +127,7 @@ int main(int argc, char *argv[]) {
     // initialize ishake
     struct IShakeHash *is;
     is = malloc(sizeof(struct IShakeHash));
-    if (ishake_init(is, BLOCK_SIZE, (uint16_t) bits)) {
+    if (ishake_init(is, block_size, (uint16_t) bits)) {
         return -1;
     }
 
