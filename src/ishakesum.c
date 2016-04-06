@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -12,9 +13,18 @@
 /*
  * Write a message to stderr and exit.
  */
-void panic(char *argv[], char *msg) {
-    printf("%s: %s\n", argv[0], msg);
-    exit(-1);
+void panic(char *program, char *format, int argc, ...) {
+    va_list valist;
+    va_start(valist, argc);
+
+    printf("%s: ", program);
+    if (argc > 0) {
+        vprintf(format, valist);
+    } else {
+        printf("%s\n", format);
+    }
+
+    exit(EXIT_FAILURE);
 }
 
 
@@ -43,39 +53,35 @@ int main(int argc, char *argv[]) {
             char *bits_str;
             bits = strtoul(argv[i + 1], &bits_str, 10);
             if (argv[i + 1] == bits_str) {
-                panic(argv, "--bits must be followed by the amount of bits "
-                        "desired as output.");
+                panic(argv[0], "--bits must be followed by the amount of bits "
+                        "desired as output.", 0);
             }
             if (bits == 0) {
-                panic(argv, "--bits option can't be zero.");
+                panic(argv[0], "--bits option can't be zero.", 0);
             }
             if (bits % 64) {
-                panic(argv, "--bits must be a multiple of 64.");
+                panic(argv[0], "--bits must be a multiple of 64.", 0);
             }
             i++; // two arguments consumed, advance the pointer!
         } else if (strcmp("--block-size", argv[i]) == 0) {
             char *block_str;
             block_size = (uint32_t)strtoul(argv[i + 1], &block_str, 10);
             if (argv[i + 1] == block_str) {
-                printf("--block-size must be followed by the amount of bytes "
-                               "desired as block size.\n");
-                return -1;
+                panic(argv[0], "--block-size must be followed by the amount of "
+                        "bytes desired as block size.", 0);
             }
             if (block_size == 0) {
-                printf("--block-size can't be zero.\n");
-                return -1;
+                panic(argv[0], "--block-size can't be zero.", 0);
             }
             i++; // two arguments consumed, advance the pointer!
         } else {
             if (strlen(argv[i]) > 2) {
                 if ((argv[i][0] == '-') && (argv[i][1] == '-')) {
-                    printf("Unknown option '%s'\n", argv[i]);
-                    return -1;
+                    panic(argv[0], "unknown option '%s'\n", 1, argv[i]);
                 }
             }
             if (strlen(filename) > 1) {
-                printf("Cannot specify more than one file.\n");
-                return -1;
+                panic(argv[0], "cannot specify more than one file.", 0);
             }
             filename = argv[i];
         }
@@ -93,8 +99,8 @@ int main(int argc, char *argv[]) {
         fp = stdin;
     } else {
         if (access(filename, R_OK) == -1) {
-            printf("Cannot find file '%s' or read access denied.\n", filename);
-            return -1;
+            panic(argv[0], "cannot find file '%s' or read access denied.",
+                    1, filename);
         }
         fp = fopen(filename, "r");
     }
@@ -106,25 +112,23 @@ int main(int argc, char *argv[]) {
                 bits = 6528;
             } else {
                 if (bits < 6528 || bits > 16512) {
-                    printf("--bits must be between 6528 and 16512 for "
-                                   "iSHAKE128.\n");
-                    return -1;
+                    panic(argv[0], "--bits must be between 6528 and 16512 for "
+                            "iSHAKE128.", 0);
                 }
             }
             break;
         case 128:
             if (bits && (bits <  2688 || bits > 4160)) {
-                printf("--bits must be between 2688 and 4160 for iSHAKE128.\n");
-                return -1;
+                panic(argv[0], "--bits must be between 2688 and 4160 for "
+                        "iSHAKE128.", 0);
             }
         default:
             if (bits == 0) {
                 bits = 2688;
             } else {
                 if (bits <  2688 || bits > 4160) {
-                    printf("--bits must be between 2688 and 4160 for "
-                                   "iSHAKE128.\n");
-                    return -1;
+                    panic(argv[0], "--bits must be between 2688 and 4160 for "
+                            "iSHAKE128.", 0);
                 }
             }
     }
@@ -133,7 +137,7 @@ int main(int argc, char *argv[]) {
     struct IShakeHash *is;
     is = malloc(sizeof(struct IShakeHash));
     if (ishake_init(is, block_size, (uint16_t) bits)) {
-        return -1;
+        panic(argv[0], "cannot initialize iSHAKE.", 0);
     }
 
     // read input and process it on the go
@@ -146,16 +150,22 @@ int main(int argc, char *argv[]) {
         if (hex_input) {
             uint8_t *raw_data;
             hex2bin((char **)&raw_data, buf, b_read);
-            if (ishake_append(is, raw_data, b_read / 2)) return -1;
+            if (ishake_append(is, raw_data, b_read / 2)) {
+                panic(argv[0], "iSHAKE failed to process data.", 0);
+            }
             free(raw_data);
         } else {
-            if (ishake_append(is, buf, b_read)) return -1;
+            if (ishake_append(is, buf, b_read)) {
+                panic(argv[0], "iSHAKE failed to process data.", 0);
+            }
         }
     } while (b_read == (unsigned long) input_block_size);
 
     // finish computations and get the hash
     bo = malloc(bits / 8);
-    ishake_final(is, bo);
+    if (ishake_final(is, bo)) {
+        panic(argv[0], "cannot compute hash after processing data.", 0);
+    }
 
     // convert to hex and print
     bin2hex(&ho, bo, bits / 8);
@@ -171,5 +181,5 @@ int main(int argc, char *argv[]) {
     free(buf);
     free(bo);
     free(ho);
-    return 0;
+    return EXIT_SUCCESS;
 }
