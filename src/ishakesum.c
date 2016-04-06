@@ -9,6 +9,15 @@
 // default block size
 #define BLOCK_SIZE 32768
 
+/*
+ * Write a message to stderr and exit.
+ */
+void panic(char *argv[], char *msg) {
+    printf("%s: %s\n", argv[0], msg);
+    exit(-1);
+}
+
+
 int main(int argc, char *argv[]) {
     FILE *fp;
     uint8_t *buf;
@@ -34,20 +43,16 @@ int main(int argc, char *argv[]) {
             char *bits_str;
             bits = strtoul(argv[i + 1], &bits_str, 10);
             if (argv[i + 1] == bits_str) {
-                printf("--bits must be followed by the amount of bits "
-                               "desired as output.\n");
-                return -1;
+                panic(argv, "--bits must be followed by the amount of bits "
+                        "desired as output.");
             }
             if (bits == 0) {
-                printf("--bits can't be zero.\n");
-                return -1;
+                panic(argv, "--bits option can't be zero.");
             }
             if (bits % 64) {
-                printf("--bits must be a multiple of 64.\n");
-                return -1;
+                panic(argv, "--bits must be a multiple of 64.");
             }
             i++; // two arguments consumed, advance the pointer!
-            continue;
         } else if (strcmp("--block-size", argv[i]) == 0) {
             char *block_str;
             block_size = (uint32_t)strtoul(argv[i + 1], &block_str, 10);
