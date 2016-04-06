@@ -41,6 +41,8 @@ allows the computations of both SHA3 and SHAKE digest, with the latter allowing
     * `--sha3-512` to use SHA3 with 512 bits of output.
     * `--bytes` to specify the amount of bytes desired in the output (only 
     for the two XOFs).
+    * `--hex` to indicate that the input is hex-encoded.
+    * `--quiet` to indicate that the output should only consist of the hash.
     * Additionally, a file can be specified as the source of the data to hash.
       Input can also be passed into the utility by using a UNIX pipe. 
 
@@ -55,6 +57,10 @@ output. The following parameters are supported:
     * `--bits` to specify the amount of bits in the output. Must be a 
     multiple of 64. The ranges 2688 - 4160 for 128-bit equivalent and 6528 - 
     16512 for 256-bit equivalent are allowed.
+    * `--block-size` to specify the amount of bytes of input that should be 
+    used per block.
+    * `--hex` to indicate that the input is hex-encoded.
+    * `--quiet` to indicate that the output should only consist of the hash.
     * Additionally, a file can be specified as the source of the data to hash.
       Input can also be passed into the utility by using a UNIX pipe. 
 
