@@ -10,6 +10,32 @@
 // default block size
 #define BLOCK_SIZE 32768
 
+
+/*
+ * Print help on how to use this program and exit.
+ */
+void usage(char *program) {
+    printf("Usage:\t%s [--128|--256] [--hex] [--bits N] [--block-size N] "
+                   "[--quiet] [--help] [file]\n\n",
+           program);
+    printf("\t--128\t\tUse 128 bit equivalent iSHAKE. Default.\n");
+    printf("\t--256\t\tUse 256 bit equivalent iSHAKE.\n");
+    printf("\t--hex\t\tInput is hex-encoded. Defaults to binary input.\n");
+    printf("\t--bits\t\tThe number of bits desired in the output. Must be a "
+                   "multiple of 64. Between 2688 and 4160 for iSHAKE 128, and "
+                   "between 6528 and 16512 for iSHAKE 256. The lowest "
+                   "number for each version is the default.\n");
+    printf("\t--block-size\tThe size in bytes of the iSHAKE internal blocks."
+                   "\n");
+    printf("\t--quiet\t\tOutput only the resulting hash string.\n");
+    printf("\t--help\t\tPrint this help.\n");
+    printf("\tfile\t\tThe file to hash. Data can also be piped into the "
+                   "program.\n");
+
+    exit(EXIT_SUCCESS);
+}
+
+
 /*
  * Write a message to stderr and exit.
  */
@@ -24,6 +50,7 @@ void panic(char *program, char *format, int argc, ...) {
         fprintf(stderr, "%s\n", format);
     }
 
+    usage(program);
     exit(EXIT_FAILURE);
 }
 
@@ -74,6 +101,8 @@ int main(int argc, char *argv[]) {
                 panic(argv[0], "--block-size can't be zero.", 0);
             }
             i++; // two arguments consumed, advance the pointer!
+        } else if (strcmp("--help", argv[i]) == 0) {
+            usage(argv[0]);
         } else {
             if (strlen(argv[i]) > 2) {
                 if ((argv[i][0] == '-') && (argv[i][1] == '-')) {
