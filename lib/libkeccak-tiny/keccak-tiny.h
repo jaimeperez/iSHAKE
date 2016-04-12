@@ -2,10 +2,12 @@
 #define KECCAK_FIPS202_H
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define decshake(bits) \
-  int shake##bits(uint8_t*, size_t, const uint8_t*, size_t);
+  int shake##bits(uint8_t*, size_t, const uint8_t*, size_t); \
+  int shakef##bits(uint8_t*, size_t, FILE *);
 
 #define decsha3(bits) \
   int sha3_##bits(uint8_t*, size_t, const uint8_t*, size_t);

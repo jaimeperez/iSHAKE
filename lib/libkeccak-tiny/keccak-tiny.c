@@ -113,6 +113,19 @@ mkapply_sd(setout, dst[i] = src[i])  // setout
     L -= rate;         \
   }
 
+#define finish(B)                   \
+  /* Xor in the DS and pad frame.*/ \
+  a[inlen] ^= delim;                \
+  a[rate - 1] ^= 0x80;              \
+  /* Xor in the last block. */      \
+  xorin(a, B, inlen);               \
+  /* Apply P */                     \
+  P(a);                             \
+  /* Squeeze output. */             \
+  foldP(out, outlen, setout);       \
+  setout(a, out, outlen);           \
+  memset(a, 0, 200);
+
 /** The sponge-based hash construction. **/
 static inline int hash(uint8_t* out, size_t outlen,
                        const uint8_t* in, size_t inlen,
@@ -123,17 +136,28 @@ static inline int hash(uint8_t* out, size_t outlen,
   uint8_t a[Plen] = {0};
   // Absorb input.
   foldP(in, inlen, xorin);
-  // Xor in the DS and pad frame.
-  a[inlen] ^= delim;
-  a[rate - 1] ^= 0x80;
-  // Xor in the last block.
-  xorin(a, in, inlen);
-  // Apply P
-  P(a);
-  // Squeeze output.
-  foldP(out, outlen, setout);
-  setout(a, out, outlen);
-  memset(a, 0, 200);
+  finish(in);
+  return 0;
+}
+
+/**
+ * The sponge-based hash construction, with input coming from a file descriptor.
+ **/
+static inline int hashf(uint8_t* out, size_t outlen,
+                        FILE *fp, size_t rate, uint8_t delim) {
+  if (fp == NULL) {
+    return -1;
+  }
+  uint8_t *buf;
+  buf = malloc(rate * 10);
+  size_t br, inlen;
+  uint8_t a[Plen] = {0};
+  do {
+    br = fread(buf, 1, rate * 10, fp);
+    inlen = br;
+    foldP(buf, inlen, xorin);
+  } while (br == rate * 10);
+  finish(buf);
   return 0;
 }
 
@@ -142,6 +166,9 @@ static inline int hash(uint8_t* out, size_t outlen,
   int shake##bits(uint8_t* out, size_t outlen,                    \
                   const uint8_t* in, size_t inlen) {              \
     return hash(out, outlen, in, inlen, 200 - (bits / 4), 0x1f);  \
+  }                                                               \
+  int shakef##bits(uint8_t* out, size_t outlen, FILE *fp) {       \
+    return hashf(out, outlen, fp, 200 - (bits / 4), 0x1f);        \
   }
 #define defsha3(bits)                                             \
   int sha3_##bits(uint8_t* out, size_t outlen,                    \
