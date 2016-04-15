@@ -163,8 +163,8 @@ int main(int argc, char *argv[]) {
     }
 
     // initialize ishake
-    struct IShakeHash *is;
-    is = malloc(sizeof(struct IShakeHash));
+    ishake *is;
+    is = malloc(sizeof(ishake));
     if (ishake_init(is, block_size, (uint16_t) bits)) {
         panic(argv[0], "cannot initialize iSHAKE.", 0);
     }

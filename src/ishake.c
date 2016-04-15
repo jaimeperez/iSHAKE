@@ -109,7 +109,7 @@ void _combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
  */
 
 
-int ishake_init(struct IShakeHash *is, uint32_t blk_size, uint16_t hashbitlen) {
+int ishake_init(ishake *is, uint32_t blk_size, uint16_t hashbitlen) {
     if (hashbitlen % 64 || !is || !blk_size) {
         return -1;
     }
@@ -130,7 +130,7 @@ int ishake_init(struct IShakeHash *is, uint32_t blk_size, uint16_t hashbitlen) {
     return 0;
 }
 
-int ishake_append(struct IShakeHash *is, unsigned char *data, uint64_t len) {
+int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     if (!is || !data) return -1;
 
     unsigned char *input;
@@ -174,7 +174,7 @@ int ishake_append(struct IShakeHash *is, unsigned char *data, uint64_t len) {
 }
 
 
-int ishake_update(struct IShakeHash *is,
+int ishake_update(ishake *is,
                   uint64_t blk_no,
                   unsigned char *old_data,
                   unsigned char *new_data) {
@@ -203,7 +203,7 @@ int ishake_update(struct IShakeHash *is,
 }
 
 
-int ishake_final(struct IShakeHash *is, uint8_t *output) {
+int ishake_final(ishake *is, uint8_t *output) {
     if (output == NULL || is == NULL) return -1;
 
     if (is->remaining || !is->proc_bytes) { // hash the last remaining data
@@ -235,7 +235,7 @@ int ishake_final(struct IShakeHash *is, uint8_t *output) {
     return 0;
 }
 
-void ishake_cleanup(struct IShakeHash *is) {
+void ishake_cleanup(ishake *is) {
     if (is->buf) free(is->buf);
     if (is->hash) free(is->hash);
     free(is);
@@ -248,8 +248,8 @@ int ishake_hash(unsigned char *data,
 
     if (hashbitlen % 8) return -1;
 
-    struct IShakeHash *is;
-    is = malloc(sizeof(struct IShakeHash));
+    ishake *is;
+    is = malloc(sizeof(ishake));
 
     int rinit = ishake_init(is, (uint32_t) _ISHAKE_BLOCK_SIZE, hashbitlen);
     if (rinit) {

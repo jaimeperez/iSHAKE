@@ -29,8 +29,8 @@
 #include <stdint.h>
 #include <math.h>
 
-#ifndef _ISHAKE_PARTIAL_H
-#define _ISHAKE_PARTIAL_H
+#ifndef _ISHAKE_H
+#define _ISHAKE_H
 
 #define _ISHAKE_BLOCK_SIZE pow(2, 15)
 
@@ -39,7 +39,12 @@
  */
 typedef int (*hash_function)(uint8_t*, size_t, const uint8_t*, size_t);
 
-struct IShakeHash {
+
+/*
+ * Type definition for the ishake main structure. It keeps the status of the
+ * algorithm at any given point in time.
+ */
+typedef struct ishakehash {
     uint64_t block_no;
     uint32_t block_size;
     uint16_t output_len;
@@ -48,24 +53,23 @@ struct IShakeHash {
     uint64_t *hash;
     unsigned char *buf;
     hash_function hash_func;
-
-};
+} ishake;
 
 /**
  * Initialize a hash.
  */
-int ishake_init(struct IShakeHash *is, uint32_t blk_size, uint16_t hashbitlen);
+int ishake_init(ishake *is, uint32_t blk_size, uint16_t hashbitlen);
 
 /**
  * Append data to be hashed. Its size doesn't need to be multiple of the block
  * size.
  */
-int ishake_append(struct IShakeHash *is, unsigned char *data, uint64_t len);
+int ishake_append(ishake *is, unsigned char *data, uint64_t len);
 
 /**
  * Update a block with new data. Old data must be provided too.
  */
-int ishake_update(struct IShakeHash *is,
+int ishake_update(ishake *is,
                   uint64_t blk_no,
                   unsigned char *old_data,
                   unsigned char *new_data);
@@ -73,7 +77,7 @@ int ishake_update(struct IShakeHash *is,
 /**
  * Finalise the process and get the hash result.
  */
-int ishake_final(struct IShakeHash *is, uint8_t *output);
+int ishake_final(ishake *is, uint8_t *output);
 
 /**
  * Obtain the hash corresponding to some piece of data.
@@ -86,6 +90,6 @@ int ishake_hash(unsigned char *data,
 /**
  * Cleanup the resources attached to the passed iSHAKE structure.
  */
-void ishake_cleanup(struct IShakeHash *is);
+void ishake_cleanup(ishake *is);
 
-#endif // _ISHAKE_PARTIAL_H
+#endif // _ISHAKE_H
