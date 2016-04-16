@@ -56,29 +56,43 @@ uint64_t sub_mod(uint64_t a, uint64_t b, uint64_t m) {
 }
 
 /*
+ * Change a 64-bit unsigned integer from big to little endian, or vice-versa.
+ */
+uint64_t swap_uint64(uint64_t val)
+{
+    val = ((val << 8)  & 0xFF00FF00FF00FF00ULL ) |
+          ((val >> 8)  & 0x00FF00FF00FF00FFULL );
+    val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) |
+          ((val >> 16) & 0x0000FFFF0000FFFFULL );
+    return (val << 32) | (val >> 32);
+}
+
+/*
  * Compute the hash of a block.
  */
 void _hash_block(
-        uint8_t *block,
-        uint32_t blen,
-        uint64_t bidx,
+        ishake_block block,
         uint64_t *hash,
         uint16_t hlen,
         hash_function func
 ) {
     uint8_t *data;
-    data = calloc(blen + sizeof(uint64_t), sizeof(uint8_t));
-    memcpy(data, block, blen);
+    data = calloc(block.block_size + block.header.length, sizeof(uint8_t));
+    memcpy(data, block.data, block.block_size);
 
-    // append the block index
-    for (int i = 0; i < 8; i++) {
-        *(data + blen + i) = (uint8_t) (bidx >> ((8 - i - 1) * 8));
+    ishake_header h = block.header;
+    if (block.header.length == 8) { // just an index
+        h.value.idx = swap_uint64(h.value.idx);
+    } else { // we have a nonce and a pointer to the next block
+        h.value.nonce.nonce = swap_uint64(h.value.nonce.nonce);
+        h.value.nonce.next = swap_uint64(h.value.nonce.next);
     }
+    memcpy(data + block.block_size, &h.value, h.length);
 
     uint8_t *buf;
     buf = calloc(hlen, sizeof(uint8_t));
 
-    func(buf, hlen, data, blen + sizeof(uint64_t));
+    func(buf, hlen, data, block.block_size + h.length);
     free(data);
 
     // cast the resulting hash to (uint64_t *) for simplicity
@@ -104,12 +118,15 @@ void _combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
     }
 }
 
-/*
- * iSHAKE public interface.
- */
+/***************************
+ | iSHAKE public interface |
+ ***************************/
 
 
-int ishake_init(ishake *is, uint32_t blk_size, uint16_t hashbitlen) {
+int ishake_init(ishake *is,
+                uint32_t blk_size,
+                uint16_t hashbitlen,
+                uint8_t mode) {
     if (hashbitlen % 64 || !is || !blk_size) {
         return -1;
     }
@@ -118,6 +135,7 @@ int ishake_init(ishake *is, uint32_t blk_size, uint16_t hashbitlen) {
         return -1;
     }
 
+    is->mode = mode;
     is->block_no = 0;
     is->block_size = blk_size;
     is->proc_bytes = 0;
@@ -131,7 +149,7 @@ int ishake_init(ishake *is, uint32_t blk_size, uint16_t hashbitlen) {
 }
 
 int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
-    if (!is || !data) return -1;
+    if (!is || !data || is->mode == ISHAKE_FULL_MODE) return -1;
 
     unsigned char *input;
     input = malloc(len + is->remaining);
@@ -151,8 +169,12 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
         uint64_t *bhash;
         bhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
         is->block_no++;
-        _hash_block(ptr, is->block_size, is->block_no, bhash,
-                   is->output_len, is->hash_func);
+        ishake_block block;
+        block.data = ptr;
+        block.block_size = is->block_size;
+        block.header.value.idx = is->block_no;
+        block.header.length = sizeof(is->block_no);
+        _hash_block(block, bhash, is->output_len, is->hash_func);
         _combine(is->hash, bhash, (uint16_t)(is->output_len/8), add_mod);
 
         ptr += is->block_size;
@@ -174,12 +196,8 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
 }
 
 
-int ishake_update(ishake *is,
-                  uint64_t blk_no,
-                  unsigned char *old_data,
-                  unsigned char *new_data) {
-
-    if (is == NULL || blk_no == 0 || old_data == NULL || new_data == NULL) {
+int ishake_update(ishake *is, ishake_block old, ishake_block new) {
+    if (is == NULL) {
         return -1;
     }
 
@@ -188,10 +206,8 @@ int ishake_update(ishake *is,
     oldhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
     newhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
 
-    _hash_block(old_data, is->block_size, blk_no, oldhash, is->output_len,
-                is->hash_func);
-    _hash_block(new_data, is->block_size, blk_no, newhash, is->output_len,
-                is->hash_func);
+    _hash_block(old, oldhash, is->output_len, is->hash_func);
+    _hash_block(new, newhash, is->output_len, is->hash_func);
 
     _combine(is->hash, oldhash, (uint16_t)(is->output_len/8), sub_mod);
     _combine(is->hash, newhash, (uint16_t)(is->output_len/8), add_mod);
@@ -210,8 +226,12 @@ int ishake_final(ishake *is, uint8_t *output) {
         uint64_t *bhash;
         bhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
         is->block_no++;
-        _hash_block(is->buf, is->remaining, is->block_no, bhash,
-                    is->output_len, is->hash_func);
+        ishake_block block;
+        block.data = is->buf;
+        block.block_size = is->remaining;
+        block.header.value.idx = is->block_no;
+        block.header.length = sizeof(is->block_no);
+        _hash_block(block, bhash, is->output_len, is->hash_func);
         _combine(is->hash, bhash, (uint16_t)(is->output_len/8), add_mod);
         is->proc_bytes += is->remaining;
         is->remaining = 0;
@@ -251,7 +271,8 @@ int ishake_hash(unsigned char *data,
     ishake *is;
     is = malloc(sizeof(ishake));
 
-    int rinit = ishake_init(is, (uint32_t) _ISHAKE_BLOCK_SIZE, hashbitlen);
+    int rinit = ishake_init(is, (uint32_t) ISHAKE_BLOCK_SIZE, hashbitlen,
+                            ISHAKE_APPEND_ONLY_MODE);
     if (rinit) {
         ishake_cleanup(is);
         return -2;
