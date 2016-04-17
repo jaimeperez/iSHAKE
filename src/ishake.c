@@ -27,6 +27,7 @@
 
 #include <string.h>
 #include "ishake.h"
+#include "utils.h"
 #include "../lib/libkeccak-tiny/keccak-tiny.h"
 
 /*
@@ -241,16 +242,7 @@ int ishake_final(ishake *is, uint8_t *output) {
     }
 
     // copy the resulting digest into output
-    for (int i = 0; i < is->output_len / 8; i++) {
-        *(output + (i * 8) + 7) = (uint8_t) *(is->hash + i);
-        *(output + (i * 8) + 6) = (uint8_t) (*(is->hash + i) >> 8);
-        *(output + (i * 8) + 5) = (uint8_t) (*(is->hash + i) >> 16);
-        *(output + (i * 8) + 4) = (uint8_t) (*(is->hash + i) >> 24);
-        *(output + (i * 8) + 3) = (uint8_t) (*(is->hash + i) >> 32);
-        *(output + (i * 8) + 2) = (uint8_t) (*(is->hash + i) >> 40);
-        *(output + (i * 8) + 1) = (uint8_t) (*(is->hash + i) >> 48);
-        *(output + (i * 8))     = (uint8_t) (*(is->hash + i) >> 56);
-    }
+    uint64_t2uint8_t(output, is->hash, (unsigned long)is->output_len / 8);
 
     return 0;
 }

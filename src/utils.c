@@ -47,3 +47,29 @@ void hex2bin(char **output, uint8_t *data, unsigned long len) {
         *(*output + i) = (char)strtol((const char *)b, NULL, 16);
     }
 }
+
+void uint8_t2uint64_t(uint64_t *output, uint8_t *data, unsigned long len) {
+    for (int i = 0; i < len / 8; i++) {
+        *(output + i) = ((uint64_t)*(data + i * 8)     << 56) +
+                        ((uint64_t)*(data + i * 8 + 1) << 48) +
+                        ((uint64_t)*(data + i * 8 + 2) << 40) +
+                        ((uint64_t)*(data + i * 8 + 3) << 32) +
+                        ((uint64_t)*(data + i * 8 + 4) << 24) +
+                        ((uint64_t)*(data + i * 8 + 5) << 16) +
+                        ((uint64_t)*(data + i * 8 + 6) << 8)  +
+                        ((uint64_t)*(data + i * 8 + 7));
+    }
+}
+
+void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len) {
+    for (int i = 0; i < len; i++) {
+        *(output + (i * 8) + 7) = (uint8_t) *(data + i);
+        *(output + (i * 8) + 6) = (uint8_t) (*(data + i) >> 8);
+        *(output + (i * 8) + 5) = (uint8_t) (*(data + i) >> 16);
+        *(output + (i * 8) + 4) = (uint8_t) (*(data + i) >> 24);
+        *(output + (i * 8) + 3) = (uint8_t) (*(data + i) >> 32);
+        *(output + (i * 8) + 2) = (uint8_t) (*(data + i) >> 40);
+        *(output + (i * 8) + 1) = (uint8_t) (*(data + i) >> 48);
+        *(output + (i * 8))     = (uint8_t) (*(data + i) >> 56);
+    }
+}

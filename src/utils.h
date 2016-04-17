@@ -34,4 +34,8 @@ void bin2hex(char **output, uint8_t *data, unsigned long len);
 
 void hex2bin(char **output, uint8_t *data, unsigned long len);
 
+void uint8_t2uint64_t(uint64_t *output, uint8_t *data, unsigned long len);
+
+void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len);
+
 #endif //ISHAKE_UTILS_H
