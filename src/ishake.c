@@ -223,7 +223,11 @@ int ishake_update(ishake *is, ishake_block old, ishake_block new) {
 int ishake_final(ishake *is, uint8_t *output) {
     if (output == NULL || is == NULL) return -1;
 
-    if (is->remaining || !is->proc_bytes) { // hash the last remaining data
+    uint64_t *empty = calloc((size_t)is->output_len/8, sizeof(uint64_t));
+
+    if (is->remaining || (!is->proc_bytes &&
+        memcmp(is->hash, empty, (size_t)is->output_len/8) == 0)) {
+        // hash the last remaining data
         uint64_t *bhash;
         bhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
         is->block_no++;
