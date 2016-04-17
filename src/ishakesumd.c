@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
     int shake = 0, blocks = 0, quiet = 0, rehash = 0;
     unsigned long bits = 0;
     char *dirname = "", *oldhash;
+    char *oldext = ".old";
 
     // parse arguments
     for (int i = 1; i < argc; i++) {
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
 
     // verify the length of the old hash if we are rehashing
     if (rehash) {
-        if (bits / 8 != strlen(oldhash)) {
+        if (bits != strlen(oldhash) * 4) {
             panic(argv[0], "the length of the old hash does not match with "
                     "the requested amount of bits.", 0);
         }
@@ -177,6 +178,12 @@ int main(int argc, char **argv) {
     if (ishake_init(is, block_size, (uint16_t) bits, ISHAKE_APPEND_ONLY_MODE)) {
         panic(argv[0], "cannot initialize iSHAKE.", 0);
     }
+    if (rehash) {
+        // initialize hash
+        uint8_t *bin = malloc(bits / 8);
+        hex2bin((char **)&bin, (uint8_t *)oldhash, strlen(oldhash));
+        uint8_t2uint64_t(is->hash, bin, bits / 8);
+    }
 
     // open directory
     if ((dfd = opendir(dirname)) == NULL) {
@@ -187,20 +194,102 @@ int main(int argc, char **argv) {
     // iterate over list of files in directory
     char *file;
     while ((dp = readdir(dfd)) != NULL) {
-        if (dp->d_name[0] == '.') {
+        if (dp->d_name[0] == '.' && rehash) { // dot file and we need to rehash
+            size_t file_l = strlen(dp->d_name);
+            size_t olde_l = strlen(oldext);
+
+            if (olde_l >= file_l) {
+                // this can't be a legitimate file, ignore
+                continue;
+            }
+
+            // we are asked to rehash, see if this is an old file
+            if (strcmp(dp->d_name + file_l - olde_l, oldext) == 0) {
+                // it is, get the corresponding file(s)
+                unsigned long b_read;
+                int i;
+
+                // dirname + '/' + dp->d_name + '\0'
+                char *old = malloc(strlen(dirname) + 1 +
+                                   strlen(dp->d_name) + 1);
+                snprintf(old, strlen(dirname) + 1 + strlen(dp->d_name) + 1,
+                         "%s/%s", dirname, dp->d_name);
+                // dirname + '/' + dp->d_name - '.' - oldext + '\0'
+                char *new = malloc(strlen(dirname) + file_l - olde_l + 1);
+                snprintf(new, strlen(dirname) + file_l - olde_l + 1,
+                         "%s/%s", dirname, dp->d_name + 1);
+
+                // verify both new and old files
+                if (access(old, R_OK) == -1) {
+                    panic(argv[0], "cannot read file '%s'.", 1, old);
+                }
+                if (access(new, R_OK) == -1) {
+                    panic(argv[0], "cannot read file '%s'.", 1, new);
+                }
+
+                // parse the name of the file into the index of the block
+                char *ptr;
+                uint64_t idx = strtoull(dp->d_name + 1, &ptr, 10);
+
+                // initialize old block
+                ishake_block oldblock;
+                oldblock.block_size = 0;
+                oldblock.header.length = 8;
+                oldblock.header.value.idx = idx;
+
+                // read the contents of the old file
+                FILE *oldfp = fopen(old, "r");
+                i = 0;
+                do {
+                    oldblock.data = realloc(oldblock.data,
+                                            block_size + block_size * i);
+                    b_read = fread(oldblock.data + block_size * i, 1,
+                                   block_size, oldfp);
+                    oldblock.block_size += b_read;
+                    i++;
+                } while (b_read == (unsigned long)block_size);
+                fclose(oldfp);
+
+                // initialize new block
+                ishake_block newblock;
+                newblock.block_size = 0;
+                newblock.header.length = 8;
+                newblock.header.value.idx = idx;
+
+                // read the contents of the new block
+                FILE *newfp = fopen(new, "r");
+                i = 0;
+                do {
+                    newblock.data = realloc(newblock.data,
+                                            block_size + block_size * i);
+                    b_read = fread(newblock.data + block_size * i, 1,
+                                   block_size, newfp);
+                    newblock.block_size += b_read;
+                    i++;
+                } while (b_read == (unsigned long)block_size);
+                fclose(newfp);
+
+                if (ishake_update(is, oldblock, newblock)) {
+                    panic(argv[0], "iSHAKE failed to update block %s.", 1, new);
+                }
+
+                free(oldblock.data);
+                free(newblock.data);
+                free(new);
+                continue;
+            }
+        } else if (rehash) { // rehashing, but not a dot file
             continue;
-        }
-        file = malloc(strlen(dirname) + strlen(dp->d_name) + 1);
-        struct stat stbuf;
-        sprintf(file, "%s/%s", dirname, dp->d_name);
-        if (stat(file, &stbuf) == -1) {
-            printf("Unable to stat file: %s\n", file);
+        } else if (dp->d_name[0] == '.') { // not rehashing and a dot file
             continue;
         }
 
+        // regular hash, no dot file
+        file = malloc(strlen(dirname) + strlen(dp->d_name) + 1);
+        sprintf(file, "%s/%s", dirname, dp->d_name);
+
         if (access(file, R_OK) == -1) {
-            panic(argv[0], "cannot find file '%s' or read access denied.",
-                  1, file);
+            panic(argv[0], "cannot read file '%s'.", 1, file);
         }
 
         // read file and process it on the go
