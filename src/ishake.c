@@ -77,10 +77,6 @@ void _hash_block(
         uint16_t hlen,
         hash_function func
 ) {
-    uint8_t *data;
-    data = calloc(block.block_size + block.header.length, sizeof(uint8_t));
-    memcpy(data, block.data, block.block_size);
-
     ishake_header h = block.header;
     if (block.header.length == 8) { // just an index
         h.value.idx = swap_uint64(h.value.idx);
@@ -88,6 +84,9 @@ void _hash_block(
         h.value.nonce.nonce = swap_uint64(h.value.nonce.nonce);
         h.value.nonce.next = swap_uint64(h.value.nonce.next);
     }
+    uint8_t *data;
+    data = calloc(block.block_size + h.length, sizeof(uint8_t));
+    memcpy(data, block.data, block.block_size);
     memcpy(data + block.block_size, &h.value, h.length);
 
     uint8_t *buf;
@@ -97,16 +96,7 @@ void _hash_block(
     free(data);
 
     // cast the resulting hash to (uint64_t *) for simplicity
-    for (int i = 0; i < hlen / 8; i++) {
-        *(hash + i)  = (uint64_t) *(buf + (8 * i)) << 56;
-        *(hash + i) |= (uint64_t) *(buf + (8 * i) + 1) << 48;
-        *(hash + i) |= (uint64_t) *(buf + (8 * i) + 2) << 40;
-        *(hash + i) |= (uint64_t) *(buf + (8 * i) + 3) << 32;
-        *(hash + i) |= (uint64_t) *(buf + (8 * i) + 4) << 24;
-        *(hash + i) |= (uint64_t) *(buf + (8 * i) + 5) << 16;
-        *(hash + i) |= (uint64_t) *(buf + (8 * i) + 6) << 8;
-        *(hash + i) |= (uint64_t) *(buf + (8 * i) + 7);
-    }
+    uint8_t2uint64_t(hash, buf, (unsigned long)hlen);
     free(buf);
 }
 
