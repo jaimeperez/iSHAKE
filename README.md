@@ -64,6 +64,17 @@ output. The following parameters are supported:
     * Additionally, a file can be specified as the source of the data to hash.
       Input can also be passed into the utility by using a UNIX pipe. 
 
+* `ishakesumd` equivalent to _ishakesum_ for directories. It takes a directory
+as a parameter, and searches for files in there, applying the algorithm over
+each file as a different block. Files should be numbered (starting with 1) with
+their corresponding block number. Its parameters are the same as for 
+_ishakesum_, with two main differences:
+ 
+    * `--hex` is **not available**. Input cannot be hex-encoded, nor piped 
+    into the program.
+    * `--rehash` allows recomputing the hash, based on a previous hashed 
+    passed as a parameter immediately after this option.
+  
 The library can also be used directly. Just include `ishake.h` and use the 
 interface. Make sure to call `ishake_init()` before other functions of the 
 interface, and `ishake_final()` when you've finished feeding data into the 
