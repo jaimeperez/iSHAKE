@@ -46,7 +46,7 @@ allows the computations of both SHA3 and SHAKE digest, with the latter allowing
     * Additionally, a file can be specified as the source of the data to hash.
       Input can also be passed into the utility by using a UNIX pipe. 
 
-* `ishakesum` the equivalent to the UNIX utility _shasum_ for iSHAKE. It has
+* `ishakesum` is the equivalent to the UNIX utility _shasum_ for iSHAKE. It has
 two different variants, iSHAKE128 and iSHAKE256, both allowing extendable 
 output. The following parameters are supported:
   
@@ -64,11 +64,11 @@ output. The following parameters are supported:
     * Additionally, a file can be specified as the source of the data to hash.
       Input can also be passed into the utility by using a UNIX pipe. 
 
-* `ishakesumd` equivalent to _ishakesum_ for directories. It takes a directory
-as a parameter, and searches for files in there, applying the algorithm over
-each file as a different block. Files should be numbered (starting with 1) with
-their corresponding block number. Its parameters are the same as for 
-_ishakesum_, with two main differences:
+* `ishakesumd` is the equivalent to _ishakesum_ for directories. It takes a 
+directory as a parameter, and searches for files in there, applying the
+algorithm over each file as a different block. Files should be numbered
+(starting with 1) with their corresponding block number. Its parameters are the
+same as for _ishakesum_, with two main differences:
  
     * `--hex` is **not available**. Input cannot be hex-encoded, nor piped 
     into the program.
@@ -79,7 +79,10 @@ The library can also be used directly. Just include `ishake.h` and use the
 interface. Make sure to call `ishake_init()` before other functions of the 
 interface, and `ishake_final()` when you've finished feeding data into the 
 algorithm, in order to retrieve the final hash. `ishake_hash()` acts as a 
-convenience wrapper around the rest of the functions. 
+convenience wrapper around the rest of the functions.
+ 
+Refer to directly to the [ishake.h header](https://github.com/jaimeperez/iSHAKE/blob/master/src/ishake.h) for details on how to use 
+the API. 
 
 ## Credits
 
