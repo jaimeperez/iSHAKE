@@ -81,7 +81,7 @@ interface, and `ishake_final()` when you've finished feeding data into the
 algorithm, in order to retrieve the final hash. `ishake_hash()` acts as a 
 convenience wrapper around the rest of the functions.
  
-Refer to directly to the [ishake.h header](https://github.com/jaimeperez/iSHAKE/blob/master/src/ishake.h) for details on how to use 
+Refer directly to the [ishake.h header](https://github.com/jaimeperez/iSHAKE/blob/master/src/ishake.h) for details on how to use 
 the API. 
 
 ## Credits
