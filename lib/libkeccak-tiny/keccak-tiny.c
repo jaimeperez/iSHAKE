@@ -141,42 +141,55 @@ static inline int hash(uint8_t* out, size_t outlen,
 }
 
 /**
- * The sponge-based hash construction, with input coming from a file descriptor.
+ * The sponge-based hash construction, with input coming from an array of file
+ * descriptors.
  **/
 static inline int hashf(uint8_t* out, size_t outlen,
-                        FILE *fp, size_t rate, uint8_t delim) {
-  if (fp == NULL) {
+                        FILE **flist, uint8_t fno, size_t rate, uint8_t delim) {
+  if (flist == NULL || fno == 0) {
     return -1;
   }
   uint8_t *buf;
+  size_t pending = 0;
+  int reading;
   buf = malloc(rate * 10);
-  size_t br, inlen;
+  size_t br, inlen = 0;
   uint8_t a[Plen] = {0};
-  do {
-    br = fread(buf, 1, rate * 10, fp);
-    inlen = br;
-    foldP(buf, inlen, xorin);
-  } while (br == rate * 10);
+  for (int i = 0; i < fno; i++) {
+    do {
+      reading = rate * 10 - pending;
+      br = fread(buf + pending, 1, reading, flist[i]);
+      inlen = br + pending;
+      foldP(buf, inlen, xorin);
+      pending = inlen;
+    } while (br == reading);
+  }
   finish(buf);
   return 0;
 }
 
 /*** Helper macros to define SHA3 and SHAKE instances. ***/
-#define defshake(bits)                                            \
-  int shake##bits(uint8_t* out, size_t outlen,                    \
-                  const uint8_t* in, size_t inlen) {              \
-    return hash(out, outlen, in, inlen, 200 - (bits / 4), 0x1f);  \
-  }                                                               \
-  int shakef##bits(uint8_t* out, size_t outlen, FILE *fp) {       \
-    return hashf(out, outlen, fp, 200 - (bits / 4), 0x1f);        \
+#define defshake(bits)                                                       \
+  int shake##bits(uint8_t* out, size_t outlen,                               \
+                  const uint8_t* in, size_t inlen) {                         \
+    return hash(out, outlen, in, inlen, 200 - (bits / 4), 0x1f);             \
+  }                                                                          \
+  int shakef##bits(uint8_t* out, size_t outlen, FILE **flist, uint8_t fno) { \
+    return hashf(out, outlen, flist, fno, 200 - (bits / 4), 0x1f);           \
   }
-#define defsha3(bits)                                             \
-  int sha3_##bits(uint8_t* out, size_t outlen,                    \
-                  const uint8_t* in, size_t inlen) {              \
-    if (outlen > (bits/8)) {                                      \
-      return -1;                                                  \
-    }                                                             \
-    return hash(out, outlen, in, inlen, 200 - (bits / 4), 0x06);  \
+#define defsha3(bits)                                                        \
+  int sha3_##bits(uint8_t* out, size_t outlen,                               \
+                  const uint8_t* in, size_t inlen) {                         \
+    if (outlen > (bits/8)) {                                                 \
+      return -1;                                                             \
+    }                                                                        \
+    return hash(out, outlen, in, inlen, 200 - (bits / 4), 0x06);             \
+  }                                                                          \
+  int sha3f_##bits(uint8_t* out, size_t outlen, FILE **flist, uint8_t fno) { \
+    if (outlen > (bits/8)) {                                                 \
+      return -1;                                                             \
+    }                                                                        \
+    return hashf(out, outlen, flist, fno, 200 - (bits / 4), 0x06);           \
   }
 
 /*** FIPS202 SHAKE VOFs ***/
