@@ -174,6 +174,7 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     if (is->remaining) {
         memcpy(input, is->buf, is->remaining);
         free(is->buf);
+        is->buf = NULL;
     }
     memcpy(input + is->remaining, data, len);
     len += is->remaining;
