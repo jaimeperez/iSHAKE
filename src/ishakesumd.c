@@ -28,6 +28,8 @@ void usage(char *program) {
                    "number for each version is the default.\n");
     printf("\t--block-size\tThe size in bytes of the iSHAKE internal blocks."
                    "\n");
+    printf("\t--mode\t\tThe mode of operation, one of FULL or APPEND_ONLY. "
+                   "Defaults to APPEND_ONLY.\n");
     printf("\t--quiet\t\tOutput only the resulting hash string.\n");
     printf("\t--help\t\tPrint this help.\n");
     printf("\tdir\t\tThe path to a directory whose contents will be hashed in "
@@ -66,6 +68,9 @@ int main(int argc, char **argv) {
     uint8_t *bo;
     char *ho;
     uint32_t block_size = BLOCK_SIZE;
+    uint8_t mode = ISHAKE_APPEND_ONLY_MODE;
+    char **files = NULL;
+    uint32_t filesno = 0;
 
     int shake = 0, blocks = 0, quiet = 0, rehash = 0;
     unsigned long bits = 0;
@@ -80,6 +85,15 @@ int main(int argc, char **argv) {
             shake = 256;
         } else if (strcmp("--quiet", argv[i]) == 0) {
             quiet = 1;
+        } else if (strcmp("--mode", argv[i]) == 0) {
+            if (i == argc - 1) {
+                panic(argv[0],
+                      "--mode must be followed by FULL or APPEND_ONLY.", 0);
+            }
+            if (strcmp("FULL", argv[i + 1]) == 0) {
+                mode = ISHAKE_FULL_MODE;
+            }
+            i++; // two arguments consumed, advance the pointer!
         } else if (strcmp("--bits", argv[i]) == 0) {
             char *bits_str;
             if (i == argc - 1) {
@@ -175,7 +189,7 @@ int main(int argc, char **argv) {
     // initialize ishake
     ishake *is;
     is = malloc(sizeof(ishake));
-    if (ishake_init(is, block_size, (uint16_t) bits, ISHAKE_APPEND_ONLY_MODE)) {
+    if (ishake_init(is, block_size, (uint16_t) bits, mode)) {
         panic(argv[0], "cannot initialize iSHAKE.", 0);
     }
     if (rehash) {
@@ -192,8 +206,8 @@ int main(int argc, char **argv) {
     }
 
     // iterate over list of files in directory
-    char *file;
     while ((dp = readdir(dfd)) != NULL) {
+        char *file;
         if (dp->d_name[0] == '.' && rehash) { // dot file and we need to rehash
             size_t file_l = strlen(dp->d_name);
             size_t olde_l = strlen(oldext);
@@ -234,8 +248,13 @@ int main(int argc, char **argv) {
                 // initialize old block
                 ishake_block oldblock;
                 oldblock.block_size = 0;
-                oldblock.header.length = 8;
-                oldblock.header.value.idx = idx;
+                if (mode == ISHAKE_APPEND_ONLY_MODE) {
+                    oldblock.header.length = 8;
+                    oldblock.header.value.idx = idx;
+                } else {
+                    oldblock.header.length = 16;
+                    oldblock.header.value.nonce.nonce = idx;
+                }
 
                 // read the contents of the old file
                 FILE *oldfp = fopen(old, "r");
@@ -284,6 +303,18 @@ int main(int argc, char **argv) {
             continue;
         }
 
+        if (mode == ISHAKE_FULL_MODE) {
+            // safe the file name to insert it in reverse order afterwards
+            files = realloc(files, sizeof(char*) * (filesno + 1));
+            char *filename = malloc(dp->d_namlen + 1);
+            strncpy(filename, dp->d_name, dp->d_namlen + 1);
+            files[filesno] = filename;
+            filesno++;
+
+            // we're done with this file, will process later
+            continue;
+        }
+
         // regular hash, no dot file
         file = malloc(strlen(dirname) + strlen(dp->d_name) + 1);
         sprintf(file, "%s/%s", dirname, dp->d_name);
@@ -308,6 +339,53 @@ int main(int argc, char **argv) {
         free(buf);
         fclose(fp);
         free(file);
+    }
+
+    if (mode == ISHAKE_FULL_MODE && !rehash) {
+        int64_t i = filesno - 1;
+        char *file;
+        uint64_t next = 0;
+
+        // iterate over the list of files in reverse order
+        while (i >= 0) {
+            file = malloc(strlen(dirname) + strlen(files[i]) + 1);
+            sprintf(file, "%s/%s", dirname, files[i]);
+
+            if (access(file, R_OK) == -1) {
+                panic(argv[0], "cannot read file '%s'.", 1, file);
+            }
+
+            // parse the name of the file into the nonce of the block
+            char *ptr;
+            uint64_t nonce = strtoull(files[i], &ptr, 10);
+
+            // read file and process it on the go
+            FILE *fp = fopen(file, "r");
+            buf = malloc(block_size);
+            size_t b_read;
+
+            // in FULL R&W mode, files size must be less or equal to block size
+            ishake_block block;
+            block.data = malloc(block_size);
+            b_read = fread(block.data, 1, block_size, fp);
+            block.block_size = (uint32_t) b_read;
+            block.header.length = 16;
+            block.header.value.nonce.next = next;
+            block.header.value.nonce.nonce = nonce;
+
+            // insert here
+            ishake_insert(is, NULL, block);
+
+            // record the last block processed to set the "next" pointer
+            next = nonce;
+
+            free(buf);
+            fclose(fp);
+            free(file);
+            free(files[i]);
+            i--;
+        }
+        free(files);
     }
 
     // finish computations and get the hash
