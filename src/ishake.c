@@ -182,21 +182,18 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     // iterate over data, processing as many blocks as possible
     unsigned char *ptr = input;
     while (len >= is->block_size) {
-        uint64_t *bhash;
-        bhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
         is->block_no++;
         ishake_block block;
         block.data = ptr;
         block.block_size = is->block_size;
         block.header.value.idx = is->block_no;
         block.header.length = sizeof(is->block_no);
-        _hash_block(block, bhash, is->output_len, is->hash_func);
-        _combine(is->hash, bhash, (uint16_t)(is->output_len/8), add_mod);
+
+        _hash_and_combine(is, block, add_mod);
 
         ptr += is->block_size;
         is->proc_bytes += is->block_size;
         len -= is->block_size;
-        free(bhash);
     }
 
     // store remaining data
@@ -211,29 +208,62 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     return 0;
 }
 
+int ishake_insert(ishake *is, ishake_block *previous, ishake_block new) {
+    if (is == NULL) {
+        return -1;
+    }
+
+    if (previous != NULL) {
+        if ((*previous).header.length != 16) {
+            return -1;
+        }
+
+        // rehash the previous block with "next" pointing to new block
+        _rehash_and_combine(is, *previous, new.header.value.nonce.nonce);
+    }
+
+    // insert() only available in FULL mode, 16 byte headers required per block
+    if (new.header.length != 16) {
+        return -1;
+    }
+
+    // add the new block
+    _hash_and_combine(is, new, add_mod);
+
+    return 0;
+}
+
+int ishake_delete(ishake *is, ishake_block *previous, ishake_block deleted) {
+    if (is == NULL) {
+        return -1;
+    }
+
+    if (previous != NULL) {
+        if ((*previous).header.length != 16) {
+            return -1;
+        }
+
+        // rehash the previous block with "next" pointing to block next to the
+        // deleted one
+        _rehash_and_combine(is, *previous, deleted.header.value.nonce.next);
+    }
+
+    // delete the block
+    _hash_and_combine(is, deleted, sub_mod);
+
+    return 0;
+}
 
 int ishake_update(ishake *is, ishake_block old, ishake_block new) {
     if (is == NULL) {
         return -1;
     }
 
-    uint64_t *oldhash, *newhash;
-
-    oldhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
-    newhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
-
-    _hash_block(old, oldhash, is->output_len, is->hash_func);
-    _hash_block(new, newhash, is->output_len, is->hash_func);
-
-    _combine(is->hash, oldhash, (uint16_t)(is->output_len/8), sub_mod);
-    _combine(is->hash, newhash, (uint16_t)(is->output_len/8), add_mod);
-
-    free(oldhash);
-    free(newhash);
+    _hash_and_combine(is, old, sub_mod);
+    _hash_and_combine(is, new, add_mod);
 
     return 0;
 }
-
 
 int ishake_final(ishake *is, uint8_t *output) {
     if (output == NULL || is == NULL) return -1;
@@ -243,19 +273,17 @@ int ishake_final(ishake *is, uint8_t *output) {
     if (is->remaining || (!is->proc_bytes &&
         memcmp(is->hash, empty, (size_t)is->output_len/8) == 0)) {
         // hash the last remaining data
-        uint64_t *bhash;
-        bhash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
         is->block_no++;
         ishake_block block;
         block.data = is->buf;
         block.block_size = is->remaining;
         block.header.value.idx = is->block_no;
         block.header.length = sizeof(is->block_no);
-        _hash_block(block, bhash, is->output_len, is->hash_func);
-        _combine(is->hash, bhash, (uint16_t)(is->output_len/8), add_mod);
+
+        _hash_and_combine(is, block, add_mod);
+
         is->proc_bytes += is->remaining;
         is->remaining = 0;
-        free(bhash);
         if (is->buf) free(is->buf);
         is->buf = NULL;
     }

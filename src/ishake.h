@@ -99,6 +99,23 @@ int ishake_init(ishake *is,
 int ishake_append(ishake *is, unsigned char *data, uint64_t len);
 
 /**
+ * Insert a new block right after another, previous block. Its size MUST be
+ * exactly the same as the block size, and the next pointer in the block must
+ * point to the next block in the list.
+ *
+ * Pass NULL as previous when inserting the first block.
+ */
+int ishake_insert(ishake *is, ishake_block *previous, ishake_block new);
+
+/**
+ * Delete a block, updating the previous block to point to the one next to the
+ * block we are deleting.
+ *
+ * Pass NULL as previous when deleting the first block.
+ */
+int ishake_delete(ishake *is, ishake_block *previous, ishake_block deleted);
+
+/**
  * Update a block with new data. Old data must be provided too.
  */
 int ishake_update(ishake *is, ishake_block old, ishake_block new);
