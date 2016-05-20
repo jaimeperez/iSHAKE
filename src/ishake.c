@@ -109,6 +109,30 @@ void _combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
     }
 }
 
+/*
+ * Hash an ishake block and combine it into an existing hash in the way
+ * specified by op.
+ */
+void _hash_and_combine(ishake *is, ishake_block block, group_op op) {
+    uint64_t *hash;
+    hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
+    _hash_block(block, hash, is->output_len, is->hash_func);
+    _combine(is->hash, hash, (uint16_t)(is->output_len/8), op);
+    free(hash);
+}
+
+/**
+ * Change the next pointer in a FULL R&W mode block, recompute the hash of
+ * the block and update the existing hash with the corresponding changes.
+ */
+void _rehash_and_combine(ishake *is, ishake_block block, uint64_t next) {
+    _hash_and_combine(is, block, sub_mod);
+    // modify the "next" pointer and rehash
+    block.header.value.nonce.next = next;
+    _hash_and_combine(is, block, add_mod);
+}
+
+
 /***************************
  | iSHAKE public interface |
  ***************************/
