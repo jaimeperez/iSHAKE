@@ -306,8 +306,9 @@ int main(int argc, char **argv) {
         if (mode == ISHAKE_FULL_MODE) {
             // safe the file name to insert it in reverse order afterwards
             files = realloc(files, sizeof(char*) * (filesno + 1));
-            char *filename = malloc(dp->d_namlen + 1);
-            strncpy(filename, dp->d_name, dp->d_namlen + 1);
+            int namlen = strlen(dp->d_name);
+            char *filename = malloc(namlen + 1);
+            strncpy(filename, dp->d_name, namlen + 1);
             files[filesno] = filename;
             filesno++;
 
