@@ -165,6 +165,7 @@ static inline int hashf(uint8_t* out, size_t outlen,
     } while (br == reading);
   }
   finish(buf);
+  free(buf);
   return 0;
 }
 
