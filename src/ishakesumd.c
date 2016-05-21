@@ -75,7 +75,11 @@ int main(int argc, char **argv) {
     int shake = 0, blocks = 0, quiet = 0, rehash = 0;
     unsigned long bits = 0;
     char *dirname = "", *oldhash;
+
+    // file extensions with special meaning, should always be '.' + 3 bytes
+    char *delext = ".del";
     char *oldext = ".old";
+    char *newext = ".new";
 
     // parse arguments
     for (int i = 1; i < argc; i++) {
@@ -215,6 +219,117 @@ int main(int argc, char **argv) {
             if (olde_l >= file_l) {
                 // this can't be a legitimate file, ignore
                 continue;
+            }
+
+            if (mode == ISHAKE_FULL_MODE) {
+                // FULL R&W mode, insert and delete available
+
+                if (strcmp(dp->d_name + file_l - olde_l, delext) == 0) {
+                    // we are asked to delete
+
+                    // get the full path to the file we are deleting
+
+                    // dirname + '/' + dp->d_name + '\0'
+                    char *delfile = malloc(strlen(dirname) + 1 +
+                                       strlen(dp->d_name) + 1);
+                    snprintf(delfile, strlen(dirname) + 1 +
+                             strlen(dp->d_name) + 1, "%s/%s", dirname,
+                             dp->d_name);
+
+                    // see if there are previous or next blocks assigned
+                    char *firstdot, *lastdot, *nonce;
+                    nonce = malloc(strlen(dp->d_name) - strlen(delext));
+                    snprintf(nonce, strlen(dp->d_name) - strlen(delext),
+                             "%s", dp->d_name + 1);
+                    firstdot = strchr(nonce, '.');
+                    lastdot = strrchr(nonce, '.');
+
+                    // get the nonces for all blocks involved
+                    char *prevnonce, *delnonce, *nextnonce;
+                    prevnonce = malloc(firstdot - nonce + 1);
+                    delnonce = malloc(lastdot - firstdot);
+                    nextnonce = malloc(strlen(nonce) - (lastdot - nonce));
+                    snprintf(prevnonce, firstdot - nonce + 1, "%s", nonce);
+                    snprintf(delnonce, lastdot - firstdot, "%s", firstdot
+                            +1);
+                    snprintf(nextnonce, strlen(nonce) - (lastdot - nonce),
+                             "%s", lastdot + 1);
+
+                    // convert the nonces to numeric
+                    char *ptr;
+                    uint64_t prev_n = strtoull(prevnonce, &ptr, 10);
+                    uint64_t del_n  = strtoull(delnonce, &ptr, 10);
+                    uint64_t next_n = strtoull(nextnonce, &ptr, 10);
+
+                    // check deleted file
+                    if (access(delfile, R_OK) == -1) {
+                        panic(argv[0], "cannot read file '%s'.", 1,
+                              delfile);
+                    }
+
+                    // see if we have a previous block and build it
+                    ishake_block *prev_ptr = NULL;
+                    if (prev_n) {
+                        // get the file name of the previous block
+                        char *prevfile;
+                        prevfile = malloc(strlen(dirname) + 1 +
+                                          strlen(prevnonce) + 1);
+                        snprintf(prevfile, strlen(dirname) + 1 +
+                                           strlen(prevnonce) + 1, "%s/%s", dirname,
+                                 prevnonce);
+
+                        // now check previous file
+                        if (access(prevfile, R_OK) == -1) {
+                            panic(argv[0], "cannot read file '%s'.", 1,
+                                  prevfile);
+                        }
+
+                        // recreate previous block
+                        ishake_block prev_b;
+                        prev_b.block_size = block_size;
+                        prev_b.header.length = 16;
+                        prev_b.header.value.nonce.nonce = prev_n;
+                        prev_b.header.value.nonce.next = del_n;
+
+                        // read its contents
+                        FILE *prev_fd = fopen(prevfile, "r");
+                        prev_b.data = malloc(block_size);
+                        fread(prev_b.data, 1, block_size, prev_fd);
+                        fclose(prev_fd);
+                        prev_ptr = &prev_b;
+                        free(prevfile);
+                    }
+
+                    // recreate deleted block
+                    ishake_block del_b;
+                    del_b.block_size = block_size;
+                    del_b.header.length = 16;
+                    del_b.header.value.nonce.nonce = del_n;
+                    del_b.header.value.nonce.next = next_n;
+
+                    // read its contents
+                    FILE *del_fd = fopen(delfile, "r");
+                    del_b.data = malloc(block_size);
+                    fread(del_b.data, 1, block_size, del_fd);
+                    fclose(del_fd);
+
+                    ishake_delete(is, prev_ptr, del_b);
+
+                    free(prevnonce);
+                    free(delnonce);
+                    free(nextnonce);
+
+                    free(nonce);
+                    free(delfile);
+
+                    continue;
+                }
+
+                if (strcmp(dp->d_name + file_l - olde_l, newext) == 0) {
+                    // we are asked to insert
+
+                    continue;
+                }
             }
 
             // we are asked to rehash, see if this is an old file
