@@ -303,10 +303,13 @@ int main(int argc, char **argv) {
 
                     ishake_delete(is, prev_ptr, del_b);
 
+                    if (prev_ptr != NULL) {
+                        free(prev_ptr->data);
+                    }
+                    free(del_b.data);
                     free(prevnonce);
                     free(delnonce);
                     free(nextnonce);
-
                     free(nonce);
                     free(delfile);
 
