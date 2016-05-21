@@ -73,3 +73,12 @@ void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len) {
         *(output + (i * 8))     = (uint8_t) (*(data + i) >> 56);
     }
 }
+
+uint64_t swap_uint64(uint64_t val)
+{
+    val = ((val << 8)  & 0xFF00FF00FF00FF00ULL ) |
+          ((val >> 8)  & 0x00FF00FF00FF00FFULL );
+    val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) |
+          ((val >> 16) & 0x0000FFFF0000FFFFULL );
+    return (val << 32) | (val >> 32);
+}

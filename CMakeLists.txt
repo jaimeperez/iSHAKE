@@ -4,7 +4,7 @@ project(iSHAKE)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -fno-builtin-memset")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu99 -fno-builtin-memset")
 
-set(ISHAKE_UTILS src/utils.c)
+set(ISHAKE_UTILS src/utils.c src/modulo_arithmetics.c)
 set(LIBKECCAK lib/libkeccak-tiny/keccak-tiny.c)
 set(SHA3SUM_FILES src/sha3sum.c ${LIBKECCAK} ${ISHAKE_UTILS})
 set(SHA3SUMD_FILES src/sha3sumd.c ${LIBKECCAK} ${ISHAKE_UTILS})

@@ -27,46 +27,10 @@
 
 #include <string.h>
 #include "ishake.h"
+#include "modulo_arithmetics.h"
 #include "utils.h"
 #include "../lib/libkeccak-tiny/keccak-tiny.h"
 
-/*
- * Type definition for a function that performs our group operation.
- */
-typedef uint64_t (*group_op)(uint64_t, uint64_t, uint64_t);
-
-/*
- * Obtain the addition of a and b modulo m. Overflow safe.
- */
-uint64_t add_mod(uint64_t a, uint64_t b, uint64_t m) {
-    if (a <= (m - b)) {
-        return a + b;
-    }
-    b = m - b;
-    return (a >= b) ? a - b : m - b + a;
-}
-
-/*
- * Obtain the subtraction of a and b modulo m. Overflow safe.
- */
-uint64_t sub_mod(uint64_t a, uint64_t b, uint64_t m) {
-    if (a >= b) {
-        return a - b;
-    }
-    return m - b + a;
-}
-
-/*
- * Change a 64-bit unsigned integer from big to little endian, or vice-versa.
- */
-uint64_t swap_uint64(uint64_t val)
-{
-    val = ((val << 8)  & 0xFF00FF00FF00FF00ULL ) |
-          ((val >> 8)  & 0x00FF00FF00FF00FFULL );
-    val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) |
-          ((val >> 16) & 0x0000FFFF0000FFFFULL );
-    return (val << 32) | (val >> 32);
-}
 
 /*
  * Compute the hash of a block.

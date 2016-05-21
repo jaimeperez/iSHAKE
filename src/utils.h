@@ -38,4 +38,9 @@ void uint8_t2uint64_t(uint64_t *output, uint8_t *data, unsigned long len);
 
 void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len);
 
+/*
+ * Change a 64-bit unsigned integer from big to little endian, or vice-versa.
+ */
+uint64_t swap_uint64(uint64_t val);
+
 #endif //ISHAKE_UTILS_H
