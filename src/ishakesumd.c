@@ -319,6 +319,91 @@ int main(int argc, char **argv) {
                 if (strcmp(dp->d_name + file_l - ext_l, newext) == 0) {
                     // we are asked to insert
 
+                    // get the full path to the file we are inserting
+                    char *newfile;
+                    resolve_file_path(&newfile, dirname, dp->d_name);
+
+                    // see if there are previous or next blocks assigned
+                    char *firstdot, *lastdot, *nonce;
+                    nonce = malloc(file_l - ext_l);
+                    snprintf(nonce, file_l - ext_l, "%s", dp->d_name + 1);
+                    firstdot = strchr(nonce, '.');
+                    lastdot = strrchr(nonce, '.');
+
+                    // get the nonces for all blocks involved
+                    char *prevnonce, *newnonce, *nextnonce;
+                    prevnonce = malloc(firstdot - nonce + 1);
+                    newnonce  = malloc(lastdot - firstdot);
+                    nextnonce = malloc(strlen(nonce) - (lastdot - nonce));
+                    snprintf(prevnonce, firstdot - nonce + 1, "%s", nonce);
+                    snprintf(newnonce, lastdot - firstdot, "%s", firstdot + 1);
+                    snprintf(nextnonce, strlen(nonce) - (lastdot - nonce), "%s",
+                             lastdot + 1);
+
+                    // convert the nonces to numeric
+                    uint64_t prev_n = str2uint64_t(prevnonce, 10);
+                    uint64_t new_n  = str2uint64_t(newnonce,  10);
+                    uint64_t next_n = str2uint64_t(nextnonce, 10);
+
+                    // check inserted file
+                    if (access(newfile, R_OK) == -1) {
+                        panic(argv[0], "cannot read file '%s'.", 1, newfile);
+                    }
+
+                    // see if we have a previous block and build it
+                    ishake_block *prev_ptr = NULL;
+                    if (prev_n) {
+                        // get the file name of the previous block
+                        char *prevfile;
+                        resolve_file_path(&prevfile, dirname, prevnonce);
+
+                        //  now check previous file
+                        if (access(prevfile, R_OK) == -1) {
+                            panic(argv[0], "cannot read file '%s'.", 1,
+                                  prevfile);
+                        }
+
+                        // modify previous block
+                        ishake_block prev_b;
+                        prev_b.block_size = block_size;
+                        prev_b.header.length = 16;
+                        prev_b.header.value.nonce.nonce = prev_n;
+                        prev_b.header.value.nonce.next  = next_n;
+
+                        // read its contents
+                        FILE *prev_fd = fopen(prevfile, "r");
+                        prev_b.data = malloc(block_size);
+                        fread(prev_b.data, 1, block_size, prev_fd);
+                        fclose(prev_fd);
+                        prev_ptr = &prev_b;
+                        free(prevfile);
+                    }
+
+                    // build new block
+                    ishake_block new_b;
+                    new_b.block_size = block_size;
+                    new_b.header.length = 16;
+                    new_b.header.value.nonce.nonce = new_n;
+                    new_b.header.value.nonce.next = next_n;
+
+                    // read its contents
+                    FILE *new_fd = fopen(newfile, "r");
+                    new_b.data = malloc(block_size);
+                    fread(new_b.data, 1, block_size, new_fd);
+                    fclose(new_fd);
+
+                    ishake_insert(is, prev_ptr, new_b);
+
+                    if (prev_ptr != NULL) {
+                        free(prev_ptr->data);
+                    }
+                    free(new_b.data);
+                    free(nextnonce);
+                    free(newnonce);
+                    free(prevnonce);
+                    free(nonce);
+                    free(newfile);
+
                     continue;
                 }
             }
