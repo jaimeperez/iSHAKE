@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "utils.h"
 
@@ -81,4 +82,18 @@ uint64_t swap_uint64(uint64_t val)
     val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) |
           ((val >> 16) & 0x0000FFFF0000FFFFULL );
     return (val << 32) | (val >> 32);
+}
+
+void resolve_file_path(char **path, char *dirname, char *filename) {
+    char *p;
+    size_t d_l = strlen(dirname);
+    size_t f_l = strlen(filename);
+    p = malloc(d_l + 1 + f_l + 1);
+    snprintf(p, d_l + 1 + f_l + 1, "%s/%s", dirname, filename);
+    *path = p;
+}
+
+uint64_t str2uint64_t(char *str, int base) {
+    char *ptr;
+    return strtoull(str, &ptr, base);
 }

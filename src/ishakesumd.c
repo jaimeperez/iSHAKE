@@ -256,10 +256,9 @@ int main(int argc, char **argv) {
                              "%s", lastdot + 1);
 
                     // convert the nonces to numeric
-                    char *ptr;
-                    uint64_t prev_n = strtoull(prevnonce, &ptr, 10);
-                    uint64_t del_n  = strtoull(delnonce, &ptr, 10);
-                    uint64_t next_n = strtoull(nextnonce, &ptr, 10);
+                    uint64_t prev_n = str2uint64_t(prevnonce, 10);
+                    uint64_t del_n = str2uint64_t(delnonce, 10);
+                    uint64_t next_n = str2uint64_t(nextnonce, 10);
 
                     // check deleted file
                     if (access(delfile, R_OK) == -1) {
@@ -338,15 +337,9 @@ int main(int argc, char **argv) {
                 unsigned long b_read;
                 int i;
 
-                // dirname + '/' + dp->d_name + '\0'
-                char *old = malloc(strlen(dirname) + 1 +
-                                   strlen(dp->d_name) + 1);
-                snprintf(old, strlen(dirname) + 1 + strlen(dp->d_name) + 1,
-                         "%s/%s", dirname, dp->d_name);
-                // dirname + '/' + dp->d_name - '.' - oldext + '\0'
-                char *new = malloc(strlen(dirname) + file_l - olde_l + 1);
-                snprintf(new, strlen(dirname) + file_l - olde_l + 1,
-                         "%s/%s", dirname, dp->d_name + 1);
+                char *old, *new;
+                resolve_file_path(&old, dirname, dp->d_name);
+                resolve_file_path(&new, dirname, dp->d_name);
 
                 // verify both new and old files
                 if (access(old, R_OK) == -1) {
@@ -357,8 +350,7 @@ int main(int argc, char **argv) {
                 }
 
                 // parse the name of the file into the index of the block
-                char *ptr;
-                uint64_t idx = strtoull(dp->d_name + 1, &ptr, 10);
+                uint64_t idx = str2uint64_t(dp->d_name + 1, 10);
 
                 // initialize old block
                 ishake_block oldblock;
@@ -472,8 +464,7 @@ int main(int argc, char **argv) {
             }
 
             // parse the name of the file into the nonce of the block
-            char *ptr;
-            uint64_t nonce = strtoull(files[i], &ptr, 10);
+            uint64_t nonce = str2uint64_t(files[i], 10);
 
             // read file and process it on the go
             FILE *fp = fopen(file, "r");

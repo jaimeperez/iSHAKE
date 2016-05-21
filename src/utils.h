@@ -43,4 +43,16 @@ void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len);
  */
 uint64_t swap_uint64(uint64_t val);
 
+/*
+ * Return the full path to a file located in dirname with name filename.
+ *
+ * The path will be dirname + '/' + filename + '\0'.
+ */
+void resolve_file_path(char **path, char *dirname, char *filename);
+
+/*
+ * Parse a string into a number, given the base.
+ */
+uint64_t str2uint64_t(char *str, int base);
+
 #endif //ISHAKE_UTILS_H
