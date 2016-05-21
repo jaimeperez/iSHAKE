@@ -41,8 +41,8 @@ void hex2bin(char **output, uint8_t *data, unsigned long len) {
     *output = calloc((size_t)(len / 2) + 1, sizeof(char));
     for (int i = 0; i < len/2; i++) {
         uint8_t b[3];
-        b[0] = *(data + i * 2);
-        b[1] = *(data + i * 2 + 1);
+        b[0] = data[i * 2];
+        b[1] = data[i * 2 + 1];
         b[2] = 0;
         *(*output + i) = (char)strtol((const char *)b, NULL, 16);
     }
@@ -50,27 +50,27 @@ void hex2bin(char **output, uint8_t *data, unsigned long len) {
 
 void uint8_t2uint64_t(uint64_t *output, uint8_t *data, unsigned long len) {
     for (int i = 0; i < len / 8; i++) {
-        *(output + i) = ((uint64_t)*(data + i * 8)     << 56) +
-                        ((uint64_t)*(data + i * 8 + 1) << 48) +
-                        ((uint64_t)*(data + i * 8 + 2) << 40) +
-                        ((uint64_t)*(data + i * 8 + 3) << 32) +
-                        ((uint64_t)*(data + i * 8 + 4) << 24) +
-                        ((uint64_t)*(data + i * 8 + 5) << 16) +
-                        ((uint64_t)*(data + i * 8 + 6) << 8)  +
-                        ((uint64_t)*(data + i * 8 + 7));
+        output[i] = ((uint64_t) data[8 * i]     << 56) +
+                    ((uint64_t) data[8 * i + 1] << 48) +
+                    ((uint64_t) data[8 * i + 2] << 40) +
+                    ((uint64_t) data[8 * i + 3] << 32) +
+                    ((uint64_t) data[8 * i + 4] << 24) +
+                    ((uint64_t) data[8 * i + 5] << 16) +
+                    ((uint64_t) data[8 * i + 6] << 8)  +
+                    ((uint64_t) data[8 * i + 7]);
     }
 }
 
 void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len) {
     for (int i = 0; i < len; i++) {
-        *(output + (i * 8) + 7) = (uint8_t) *(data + i);
-        *(output + (i * 8) + 6) = (uint8_t) (*(data + i) >> 8);
-        *(output + (i * 8) + 5) = (uint8_t) (*(data + i) >> 16);
-        *(output + (i * 8) + 4) = (uint8_t) (*(data + i) >> 24);
-        *(output + (i * 8) + 3) = (uint8_t) (*(data + i) >> 32);
-        *(output + (i * 8) + 2) = (uint8_t) (*(data + i) >> 40);
-        *(output + (i * 8) + 1) = (uint8_t) (*(data + i) >> 48);
-        *(output + (i * 8))     = (uint8_t) (*(data + i) >> 56);
+        output[8 * i + 7] = (uint8_t) data[i];
+        output[8 * i + 6] = (uint8_t) (data[i] >> 8);
+        output[8 * i + 5] = (uint8_t) (data[i] >> 16);
+        output[8 * i + 4] = (uint8_t) (data[i] >> 24);
+        output[8 * i + 3] = (uint8_t) (data[i] >> 32);
+        output[8 * i + 2] = (uint8_t) (data[i] >> 40);
+        output[8 * i + 1] = (uint8_t) (data[i] >> 48);
+        output[8 * i]     = (uint8_t) (data[i] >> 56);
     }
 }
 
