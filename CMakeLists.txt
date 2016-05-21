@@ -11,9 +11,11 @@ set(SHA3SUMD_FILES src/sha3sumd.c ${LIBKECCAK} ${ISHAKE_UTILS})
 set(LIBISHAKE src/ishake.c)
 set(ISHAKESUM_FILES src/ishakesum.c ${LIBISHAKE} ${LIBKECCAK} ${ISHAKE_UTILS})
 set(ISHAKESUMD_FILES src/ishakesumd.c ${LIBISHAKE} ${LIBKECCAK} ${ISHAKE_UTILS})
+set(COMBINE_FILES src/combine.c ${ISHAKE_UTILS})
 
 add_executable(sha3sum ${SHA3SUM_FILES})
 add_executable(sha3sumd ${SHA3SUMD_FILES})
 add_executable(ishakesum ${ISHAKESUM_FILES})
 add_executable(ishakesumd ${ISHAKESUMD_FILES})
+add_executable(combine ${COMBINE_FILES})
 
