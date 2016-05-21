@@ -228,13 +228,8 @@ int main(int argc, char **argv) {
                     // we are asked to delete
 
                     // get the full path to the file we are deleting
-
-                    // dirname + '/' + dp->d_name + '\0'
-                    char *delfile = malloc(strlen(dirname) + 1 +
-                                       strlen(dp->d_name) + 1);
-                    snprintf(delfile, strlen(dirname) + 1 +
-                             strlen(dp->d_name) + 1, "%s/%s", dirname,
-                             dp->d_name);
+                    char *delfile;
+                    resolve_file_path(&delfile, dirname, dp->d_name);
 
                     // see if there are previous or next blocks assigned
                     char *firstdot, *lastdot, *nonce;
@@ -271,11 +266,7 @@ int main(int argc, char **argv) {
                     if (prev_n) {
                         // get the file name of the previous block
                         char *prevfile;
-                        prevfile = malloc(strlen(dirname) + 1 +
-                                          strlen(prevnonce) + 1);
-                        snprintf(prevfile, strlen(dirname) + 1 +
-                                           strlen(prevnonce) + 1, "%s/%s", dirname,
-                                 prevnonce);
+                        resolve_file_path(&prevfile, dirname, prevnonce);
 
                         // now check previous file
                         if (access(prevfile, R_OK) == -1) {
@@ -424,8 +415,7 @@ int main(int argc, char **argv) {
         }
 
         // regular hash, no dot file
-        file = malloc(strlen(dirname) + strlen(dp->d_name) + 1);
-        sprintf(file, "%s/%s", dirname, dp->d_name);
+        resolve_file_path(&file, dirname, dp->d_name);
 
         if (access(file, R_OK) == -1) {
             panic(argv[0], "cannot read file '%s'.", 1, file);
@@ -456,8 +446,7 @@ int main(int argc, char **argv) {
 
         // iterate over the list of files in reverse order
         while (i >= 0) {
-            file = malloc(strlen(dirname) + strlen(files[i]) + 1);
-            sprintf(file, "%s/%s", dirname, files[i]);
+            resolve_file_path(&file, dirname, files[i]);
 
             if (access(file, R_OK) == -1) {
                 panic(argv[0], "cannot read file '%s'.", 1, file);
