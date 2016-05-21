@@ -362,7 +362,6 @@ int main(int argc, char **argv) {
 
             // read file and process it on the go
             FILE *fp = fopen(file, "r");
-            buf = malloc(block_size);
             size_t b_read;
 
             // in FULL R&W mode, files size must be less or equal to block size
@@ -380,7 +379,6 @@ int main(int argc, char **argv) {
             // record the last block processed to set the "next" pointer
             next = nonce;
 
-            free(buf);
             fclose(fp);
             free(file);
             free(files[i]);
