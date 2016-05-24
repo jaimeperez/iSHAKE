@@ -25,11 +25,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "utils.h"
+
+#define IS_BIG_ENDIAN (!*(unsigned char *)&(uint16_t){1})
 
 void bin2hex(char **output, uint8_t *data, unsigned long len) {
     *output = calloc((size_t)len * 2 + 1, sizeof(char));
@@ -77,6 +80,9 @@ void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len) {
 
 uint64_t swap_uint64(uint64_t val)
 {
+    if (IS_BIG_ENDIAN) {
+        return val;
+    }
     val = ((val << 8)  & 0xFF00FF00FF00FF00ULL ) |
           ((val >> 8)  & 0x00FF00FF00FF00FFULL );
     val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) |
