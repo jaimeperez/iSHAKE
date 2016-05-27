@@ -91,9 +91,11 @@ int main(int argc, char *argv[]) {
             if (bytes == 0 && argv[i + 1] == *invalid) {
                 printf("--bytes must be followed by the amount of bytes "
                                "desired as output.");
+                free(invalid);
                 return -1;
             }
             i++;
+            free(invalid);
             continue;
         } else if (strcmp("--help", argv[i]) == 0) {
             usage(argv[0]);
