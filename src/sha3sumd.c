@@ -51,9 +51,9 @@ void panic(char *program, char *format, int argc, ...) {
 
 int main(int argc, char *argv[]) {
     DIR *dfd;
-    FILE **files;
+    char **files = NULL;
     struct dirent *dp;
-    uint8_t fno = 0;
+    uint32_t fno = 0;
 
     uint8_t *out;
     char *output;
@@ -133,8 +133,8 @@ int main(int argc, char *argv[]) {
                  "%s/%s", dirname, dp->d_name);
 
         // add file to list
-        files = realloc(files, fno + 1);
-        files[fno] = fopen(file, "r");
+        files = realloc(files, sizeof(char *) * (fno + 1));
+        files[fno] = file;
         fno++;
     }
 
@@ -191,10 +191,7 @@ int main(int argc, char *argv[]) {
         printf("%s - %s\n", output, dirname);
     }
 
-    // close files and free memory
-    for (int i = 0; i < fno; i++) {
-        fclose(files[i]);
-    }
+    free(files);
     closedir(dfd);
     free(out);
     free(output);

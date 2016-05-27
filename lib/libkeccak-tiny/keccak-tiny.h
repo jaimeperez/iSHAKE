@@ -7,11 +7,11 @@
 
 #define decshake(bits) \
   int shake##bits(uint8_t*, size_t, const uint8_t*, size_t); \
-  int shakef##bits(uint8_t*, size_t, FILE **, uint8_t);
+  int shakef##bits(uint8_t*, size_t, char **, uint32_t);
 
 #define decsha3(bits) \
   int sha3_##bits(uint8_t*, size_t, const uint8_t*, size_t); \
-  int sha3f_##bits(uint8_t*, size_t, FILE **, uint8_t);
+  int sha3f_##bits(uint8_t*, size_t, char **, uint32_t);
 
 decshake(128)
 decshake(256)

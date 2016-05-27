@@ -145,26 +145,35 @@ static inline int hash(uint8_t* out, size_t outlen,
  * descriptors.
  **/
 static inline int hashf(uint8_t* out, size_t outlen,
-                        FILE **flist, uint8_t fno, size_t rate, uint8_t delim) {
+                        char **flist, uint32_t fno, size_t rate, uint8_t
+                        delim) {
   if (flist == NULL || fno == 0) {
     return -1;
   }
-  uint8_t *buf;
+  uint8_t *buf, *ptr;
   size_t pending = 0;
   int reading;
   buf = malloc(rate * 10);
   size_t br, inlen = 0;
   uint8_t a[Plen] = {0};
   for (int i = 0; i < fno; i++) {
+    FILE *f = fopen(flist[i], "r");
     do {
       reading = rate * 10 - pending;
-      br = fread(buf + pending, 1, reading, flist[i]);
+      ptr = buf;
+      br = fread(buf + pending, 1, reading, f);
       inlen = br + pending;
-      foldP(buf, inlen, xorin);
+      foldP(ptr, inlen, xorin);
       pending = inlen;
+      if (pending) {
+        memmove(buf, ptr, pending);
+      }
     } while (br == reading);
+
+    fclose(f);
+    free(flist[i]);
   }
-  finish(buf);
+  finish(ptr);
   free(buf);
   return 0;
 }
@@ -175,7 +184,7 @@ static inline int hashf(uint8_t* out, size_t outlen,
                   const uint8_t* in, size_t inlen) {                         \
     return hash(out, outlen, in, inlen, 200 - (bits / 4), 0x1f);             \
   }                                                                          \
-  int shakef##bits(uint8_t* out, size_t outlen, FILE **flist, uint8_t fno) { \
+  int shakef##bits(uint8_t* out, size_t outlen, char **flist, uint32_t fno) { \
     return hashf(out, outlen, flist, fno, 200 - (bits / 4), 0x1f);           \
   }
 #define defsha3(bits)                                                        \
@@ -186,7 +195,7 @@ static inline int hashf(uint8_t* out, size_t outlen,
     }                                                                        \
     return hash(out, outlen, in, inlen, 200 - (bits / 4), 0x06);             \
   }                                                                          \
-  int sha3f_##bits(uint8_t* out, size_t outlen, FILE **flist, uint8_t fno) { \
+  int sha3f_##bits(uint8_t* out, size_t outlen, char **flist, uint32_t fno) { \
     if (outlen > (bits/8)) {                                                 \
       return -1;                                                             \
     }                                                                        \
