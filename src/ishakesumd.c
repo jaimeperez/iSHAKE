@@ -481,6 +481,41 @@ int main(int argc, char **argv) {
                 free(new);
                 continue;
             }
+
+
+            // we are asked to rehash, see if this is a new file
+            if (strcmp(dp->d_name + file_l - ext_l, newext) == 0) {
+                // it is, get the corresponding file(s)
+                unsigned long b_read;
+                int i;
+
+                char *new;
+                resolve_file_path(&new, dirname, dp->d_name);
+
+                // verify the new file
+                if (access(new, R_OK) == -1) {
+                    panic(argv[0], "cannot read file '%s'.", 1, new);
+                }
+
+                // parse the name of the file into the index of the block
+                uint64_t idx = str2uint64_t(dp->d_name + 1, 10);
+
+                // since we are appending, we need to tell iSHAKE that we
+                // already have idx-1 blocks
+                is->block_no = idx-1;
+
+                // read the contents of the new file
+                FILE *newfp = fopen(new, "r");
+                buf = malloc(block_size);
+                b_read = fread(buf, 1, block_size, newfp);
+                if (ishake_append(is, buf, b_read)) {
+                    panic(argv[0], "iSHAKE failed to process data.", 0);
+                }
+                free(buf);
+                fclose(newfp);
+
+                continue;
+            }
         } else if (rehash) { // rehashing, but not a dot file
             continue;
         } else if (dp->d_name[0] == '.') { // not rehashing and a dot file
