@@ -435,9 +435,13 @@ int main(int argc, char **argv) {
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
                     oldblock.header.length = 8;
                     oldblock.header.value.idx = idx;
-                } else {
+                } else { // FULL R&W, we need the next block
+                    // parse the name of the file again
+                    char *sep = strchr(dp->d_name + 1, '.');
+                    uint64_t next = str2uint64_t(sep + 1, 10);
                     oldblock.header.length = 16;
                     oldblock.header.value.nonce.nonce = idx;
+                    oldblock.header.value.nonce.next = next;
                 }
 
                 // read the contents of the old file
