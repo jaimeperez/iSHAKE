@@ -416,21 +416,33 @@ int main(int argc, char **argv) {
 
                 char *old, *new;
                 resolve_file_path(&old, dirname, dp->d_name);
-                resolve_file_path(&new, dirname, dp->d_name);
 
-                // verify both new and old files
+
+                // verify the old file
                 if (access(old, R_OK) == -1) {
                     panic(argv[0], "cannot read file '%s'.", 1, old);
                 }
-                if (access(new, R_OK) == -1) {
-                    panic(argv[0], "cannot read file '%s'.", 1, new);
-                }
+
 
                 // parse the name of the file into the index of the block
                 uint64_t idx = str2uint64_t(dp->d_name + 1, 10);
 
+                // verify the new file
+                char *updated;
+                char *ptr;
+                ptr = strchr(dp->d_name + 1, '.');
+                updated = malloc(ptr - dp->d_name);
+                snprintf(updated, ptr - dp->d_name, "%s", dp->d_name + 1);
+
+                resolve_file_path(&new, dirname, updated);
+                free(updated);
+                if (access(new, R_OK) == -1) {
+                    panic(argv[0], "cannot read file '%s'.", 1, new);
+                }
+
                 // initialize old block
                 ishake_block oldblock;
+                uint64_t next;
                 oldblock.block_size = 0;
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
                     oldblock.header.length = 8;
@@ -438,7 +450,7 @@ int main(int argc, char **argv) {
                 } else { // FULL R&W, we need the next block
                     // parse the name of the file again
                     char *sep = strchr(dp->d_name + 1, '.');
-                    uint64_t next = str2uint64_t(sep + 1, 10);
+                    next = str2uint64_t(sep + 1, 10);
                     oldblock.header.length = 16;
                     oldblock.header.value.nonce.nonce = idx;
                     oldblock.header.value.nonce.next = next;
