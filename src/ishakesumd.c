@@ -472,8 +472,14 @@ int main(int argc, char **argv) {
                 // initialize new block
                 ishake_block newblock;
                 newblock.block_size = 0;
-                newblock.header.length = 8;
-                newblock.header.value.idx = idx;
+                if (mode == ISHAKE_APPEND_ONLY_MODE) {
+                    newblock.header.length = 8;
+                    newblock.header.value.idx = idx;
+                } else { // FULL R&W, we need the next block
+                    newblock.header.length = 16;
+                    newblock.header.value.nonce.nonce = idx;
+                    newblock.header.value.nonce.next = next;
+                }
 
                 // read the contents of the new block
                 FILE *newfp = fopen(new, "r");
