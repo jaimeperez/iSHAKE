@@ -27,8 +27,12 @@
 
 #include <stdint.h>
 
+#include "modulo_arithmetics.h"
+
 #ifndef ISHAKE_UTILS_H
 #define ISHAKE_UTILS_H
+
+void combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op);
 
 void bin2hex(char **output, uint8_t *data, unsigned long len);
 

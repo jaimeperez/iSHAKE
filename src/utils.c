@@ -34,6 +34,12 @@
 
 #define IS_BIG_ENDIAN (!*(unsigned char *)&(uint16_t){1})
 
+void combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
+    for (int i = 0; i < len; i++) {
+        out[i] = op(out[i], in[i], UINT64_MAX);
+    }
+}
+
 void bin2hex(char **output, uint8_t *data, unsigned long len) {
     *output = calloc((size_t)len * 2 + 1, sizeof(char));
     for (int i = 0; i < len; i++) {

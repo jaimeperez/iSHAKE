@@ -17,8 +17,8 @@
  * Print help on how to use this program and exit.
  */
 void usage(char *program) {
-    printf("Usage:\t%s [--128|--256] [--bits N] [--block-size N] "
-                   "[--quiet] [--help] [dir]\n\n",
+    printf("Usage:\t%s [--128|--256] [--bits N] [--block-size N] [--mode M] "
+                   "[--rehash H] [--threads N] [--quiet] [--help] [dir]\n\n",
            program);
     printf("\t--128\t\tUse 128 bit equivalent iSHAKE. Default.\n");
     printf("\t--256\t\tUse 256 bit equivalent iSHAKE.\n");
@@ -30,6 +30,10 @@ void usage(char *program) {
                    "\n");
     printf("\t--mode\t\tThe mode of operation, one of FULL or APPEND_ONLY. "
                    "Defaults to APPEND_ONLY.\n");
+    printf("\t--rehash\tThe hash to use as base, computing only those "
+                   "blocks that have changed.\n");
+    printf("\t--threads\tThe number of threads to use. No threads are used "
+                   "by default.\n");
     printf("\t--quiet\t\tOutput only the resulting hash string.\n");
     printf("\t--help\t\tPrint this help.\n");
     printf("\tdir\t\tThe path to a directory whose contents will be hashed in "
@@ -64,22 +68,25 @@ int main(int argc, char **argv) {
     struct dirent *dp;
     DIR *dfd;
 
-    uint8_t *buf;
-    uint8_t *bo;
     char *ho;
-    uint32_t block_size = BLOCK_SIZE;
-    uint8_t mode = ISHAKE_APPEND_ONLY_MODE;
     char **files = NULL;
-    uint32_t filesno = 0;
-
-    int shake = 0, blocks = 0, quiet = 0, rehash = 0;
-    unsigned long bits = 0;
     char *dirname = "", *oldhash;
 
     // file extensions with special meaning, should always be '.' + 3 bytes
     char *delext = ".del";
     char *oldext = ".old";
     char *newext = ".new";
+
+    int shake = 0, blocks = 0, quiet = 0, rehash = 0, thrno = 0;
+    unsigned long bits = 0;
+
+    uint8_t *buf;
+    uint8_t *bo;
+    uint8_t mode = ISHAKE_APPEND_ONLY_MODE;
+    uint32_t filesno = 0;
+    uint32_t block_size = BLOCK_SIZE;
+
+    pthread_t **threads;
 
     // parse arguments
     for (int i = 1; i < argc; i++) {
@@ -139,6 +146,13 @@ int main(int argc, char **argv) {
             }
             oldhash = argv[i + 1];
             i++; // two arguments consumed, advance the pointer!
+        } else if (strcmp("--threads", argv[i]) == 0) {
+            if (i == argc - 1) {
+                panic(argv[0], "--threads must be followed by the amount of "
+                        "threads to use.", 0);
+            }
+            thrno = atoi(argv[i + 1]);
+            i++; // two arguments consumed, advance the pointer!
         } else if (strcmp("--help", argv[i]) == 0) {
             usage(argv[0]);
         } else {
@@ -193,9 +207,10 @@ int main(int argc, char **argv) {
     // initialize ishake
     ishake *is;
     is = malloc(sizeof(ishake));
-    if (ishake_init(is, block_size, (uint16_t) bits, mode)) {
+    if (ishake_init(is, block_size, (uint16_t) bits, mode, (uint16_t)thrno)) {
         panic(argv[0], "cannot initialize iSHAKE.", 0);
     }
+
     if (rehash) {
         // initialize hash
         uint8_t *bin = malloc(bits / 8);
@@ -545,9 +560,9 @@ int main(int argc, char **argv) {
         }
 
         if (mode == ISHAKE_FULL_MODE) {
-            // safe the file name to insert it in reverse order afterwards
+            // save the file name to insert it in reverse order afterwards
             files = realloc(files, sizeof(char*) * (filesno + 1));
-            int namlen = strlen(dp->d_name);
+            size_t namlen = strlen(dp->d_name);
             char *filename = malloc(namlen + 1);
             strncpy(filename, dp->d_name, namlen + 1);
             files[filesno] = filename;
@@ -566,12 +581,17 @@ int main(int argc, char **argv) {
 
         // read file and process it on the go
         FILE *fp = fopen(file, "r");
-        buf = malloc(block_size);
         unsigned long b_read;
 
         do {
             blocks++;
+            buf = malloc(block_size);
             b_read = fread(buf, 1, block_size, fp);
+            if (b_read == 0) {
+                // the file size is a multiple of the block size, we are done
+                break;
+            }
+
             if (ishake_append(is, buf, b_read)) {
                 panic(argv[0], "iSHAKE failed to process data.", 0);
             }

@@ -165,7 +165,12 @@ int main(int argc, char *argv[]) {
     // initialize ishake
     ishake *is;
     is = malloc(sizeof(ishake));
-    if (ishake_init(is, block_size, (uint16_t) bits, ISHAKE_APPEND_ONLY_MODE)) {
+    if (ishake_init(is,
+                    block_size,
+                    (uint16_t) bits,
+                    ISHAKE_APPEND_ONLY_MODE,
+                    0)
+    ) {
         panic(argv[0], "cannot initialize iSHAKE.", 0);
     }
 

@@ -27,15 +27,11 @@
 
 #include <string.h>
 #include "ishake.h"
-#include "modulo_arithmetics.h"
 #include "utils.h"
 #include "../lib/libkeccak-tiny/keccak-tiny.h"
 
 
-/*
- * Compute the hash of a block.
- */
-void _hash_block(
+int _hash_block(
         ishake_block block,
         uint64_t *hash,
         uint16_t hlen,
@@ -50,6 +46,9 @@ void _hash_block(
     }
     uint8_t *data;
     data = calloc(block.block_size + h.length, sizeof(uint8_t));
+    if (data == NULL) {
+        return -1;
+    }
     memcpy(data, block.data, block.block_size);
     memcpy(data + block.block_size, &h.value, h.length);
 
@@ -62,38 +61,92 @@ void _hash_block(
     // cast the resulting hash to (uint64_t *) for simplicity
     uint8_t2uint64_t(hash, buf, (unsigned long)hlen);
     free(buf);
+    return 0;
 }
 
-/*
- * Combine a and b using a group operation op, and store the result in a.
- */
-void _combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
-    for (int i = 0; i < len; i++) {
-        *(out + i) = op(*(out + i), *(in + i), UINT64_MAX);
+uint64_t *ishake_hash_block(ishake *is, ishake_block block) {
+    uint64_t *hash;
+    hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
+    if (_hash_block(block, hash, is->output_len, is->hash_func) != 0) {
+        return NULL;
     }
+    return hash;
 }
 
 /*
  * Hash an ishake block and combine it into an existing hash in the way
  * specified by op.
  */
-void _hash_and_combine(ishake *is, ishake_block block, group_op op) {
-    uint64_t *hash;
-    hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
-    _hash_block(block, hash, is->output_len, is->hash_func);
-    _combine(is->hash, hash, (uint16_t)(is->output_len/8), op);
+int _hash_and_combine(ishake *is, ishake_block block, group_op op) {
+    if (is->thrd_no > 0) { // use the workers to do this
+        ishake_task_t *task = calloc(1, sizeof(ishake_task_t));
+        task->block = block;
+        task->prev = NULL;
+        task->op = op;
+        pthread_mutex_lock(&(is->stack_lck));
+        if (is->stack == NULL) { // empty stack
+            is->stack = task;
+        } else { // non-empty stack
+            task->prev = is->stack;
+            is->stack = task;
+        }
+        pthread_mutex_unlock(&(is->stack_lck));
+        pthread_cond_signal(&is->data_available);
+        return 0;
+    }
+
+    // no threads, process here
+    uint64_t *hash = ishake_hash_block(is, block);
+    if (hash == NULL) {
+        return -1;
+    }
+    combine(is->hash, hash, (uint16_t)(is->output_len/8), op);
     free(hash);
+    return 0;
 }
 
+
 /**
- * Change the next pointer in a FULL R&W mode block, recompute the hash of
- * the block and update the existing hash with the corresponding changes.
+ * Worker thread.
+ *
+ * It will pick up tasks from a stack, hash the corresponding block and combine
+ * it with the existing hash.
  */
-void _rehash_and_combine(ishake *is, ishake_block block, uint64_t next) {
-    _hash_and_combine(is, block, sub_mod);
-    // modify the "next" pointer and rehash
-    block.header.value.nonce.next = next;
-    _hash_and_combine(is, block, add_mod);
+void *_worker(void *arg) {
+    ishake *is = (ishake *) arg;
+
+    pthread_mutex_lock(&(is->stack_lck));
+    while (1) {
+        if (is->stack != NULL) {
+            ishake_task_t *task = is->stack;
+            is->stack = task->prev;
+            pthread_mutex_unlock(&(is->stack_lck));
+
+            // hash the block
+            uint64_t *hash = ishake_hash_block(is, task->block);
+            free(task->block.data);
+            free(task);
+
+            // combine the resulting hash
+            pthread_mutex_lock(&is->combine_lck);
+            combine(is->hash, hash, (uint16_t)
+                    (is->output_len/8), task->op);
+            pthread_mutex_unlock(&is->combine_lck);
+            free(hash);
+
+            // do this once we stop calling ishake_append() in main()
+            pthread_mutex_lock(&is->stack_lck);
+            continue;
+        }
+
+        if (is->done == 1) {
+            pthread_mutex_unlock(&is->stack_lck);
+            break;
+        }
+        pthread_cond_wait(&is->data_available, &is->stack_lck);
+    }
+
+    pthread_exit(NULL);
 }
 
 
@@ -105,7 +158,8 @@ void _rehash_and_combine(ishake *is, ishake_block block, uint64_t next) {
 int ishake_init(ishake *is,
                 uint32_t blk_size,
                 uint16_t hashbitlen,
-                uint8_t mode) {
+                uint8_t mode,
+                uint16_t threads) {
     if (hashbitlen % 64 || !is || !blk_size) {
         return -1;
     }
@@ -114,6 +168,7 @@ int ishake_init(ishake *is,
         return -1;
     }
 
+    // common initialization
     is->mode = mode;
     is->block_no = 0;
     is->block_size = blk_size;
@@ -122,16 +177,39 @@ int ishake_init(ishake *is,
     is->buf = 0;
     is->output_len = hashbitlen / (uint16_t)8;
     is->hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
-
     is->hash_func = (hashbitlen <= 4160) ? shake128 : shake256;
+
+    if (threads > 0) { // we are asked to use threads
+        // basic thread initialization
+        is->thrd_no = threads;
+        is->threads = calloc(1, sizeof(pthread_t *) * threads);
+        is->done = 0;
+        is->stack = NULL;
+
+        // mutexes/conditions initialization
+        pthread_mutex_init(&is->stack_lck, NULL);
+        pthread_mutex_init(&is->combine_lck, NULL);
+        pthread_cond_init(&is->data_available, NULL);
+
+        // initialize worker pool
+        for (int i = 0; i < threads; i++) {
+            is->threads[i] = calloc(1, sizeof(pthread_t));
+            if (pthread_create(is->threads[i], NULL, _worker, (void *)is)) {
+                return -1;
+            }
+        }
+    }
+
     return 0;
 }
+
+
 
 int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     if (!is || !data || is->mode == ISHAKE_FULL_MODE) return -1;
 
     unsigned char *input;
-    input = malloc(len + is->remaining);
+    input = calloc(len + is->remaining, sizeof(unsigned char));
     if (input == NULL) return -1;
 
     // see if we have data pending from previous calls
@@ -148,7 +226,8 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     while (len >= is->block_size) {
         is->block_no++;
         ishake_block block;
-        block.data = ptr;
+        block.data = calloc(len, sizeof(unsigned char));
+        memcpy(block.data, ptr, len);
         block.block_size = is->block_size;
         block.header.value.idx = is->block_no;
         block.header.length = sizeof(is->block_no);
@@ -163,7 +242,7 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     // store remaining data
     is->remaining = (uint32_t)len;
     if (is->remaining) {
-        is->buf = malloc(is->remaining);
+        is->buf = calloc(is->remaining, sizeof(unsigned char));
         if (is->buf == NULL) return -1;
         memcpy(is->buf, ptr, len);
     }
@@ -171,6 +250,7 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
 
     return 0;
 }
+
 
 int ishake_insert(ishake *is, ishake_block *previous, ishake_block new) {
     if (is == NULL) {
@@ -183,7 +263,9 @@ int ishake_insert(ishake *is, ishake_block *previous, ishake_block new) {
         }
 
         // rehash the previous block with "next" pointing to new block
-        _rehash_and_combine(is, *previous, new.header.value.nonce.nonce);
+        _hash_and_combine(is, *previous, sub_mod);
+        previous->header.value.nonce.next = new.header.value.nonce.nonce;
+        _hash_and_combine(is, *previous, add_mod);
     }
 
     // insert() only available in FULL mode, 16 byte headers required per block
@@ -197,6 +279,7 @@ int ishake_insert(ishake *is, ishake_block *previous, ishake_block new) {
     return 0;
 }
 
+
 int ishake_delete(ishake *is, ishake_block *previous, ishake_block deleted) {
     if (is == NULL) {
         return -1;
@@ -209,7 +292,9 @@ int ishake_delete(ishake *is, ishake_block *previous, ishake_block deleted) {
 
         // rehash the previous block with "next" pointing to block next to the
         // deleted one
-        _rehash_and_combine(is, *previous, deleted.header.value.nonce.next);
+        _hash_and_combine(is, *previous, sub_mod);
+        previous->header.value.nonce.next = deleted.header.value.nonce.next;
+        _hash_and_combine(is, *previous, add_mod);
     }
 
     // delete the block
@@ -217,6 +302,7 @@ int ishake_delete(ishake *is, ishake_block *previous, ishake_block deleted) {
 
     return 0;
 }
+
 
 int ishake_update(ishake *is, ishake_block old, ishake_block new) {
     if (is == NULL) {
@@ -229,6 +315,7 @@ int ishake_update(ishake *is, ishake_block old, ishake_block new) {
     return 0;
 }
 
+
 int ishake_final(ishake *is, uint8_t *output) {
     if (output == NULL || is == NULL) return -1;
 
@@ -240,6 +327,8 @@ int ishake_final(ishake *is, uint8_t *output) {
         is->block_no++;
         ishake_block block;
         block.data = is->buf;
+        block.data = calloc(is->remaining, sizeof(unsigned char));
+        memcpy(block.data, is->buf, is->remaining);
         block.block_size = is->remaining;
         block.header.value.idx = is->block_no;
         block.header.length = sizeof(is->block_no);
@@ -248,8 +337,22 @@ int ishake_final(ishake *is, uint8_t *output) {
 
         is->proc_bytes += is->remaining;
         is->remaining = 0;
-        if (is->buf) free(is->buf);
+        free(is->buf);
         is->buf = NULL;
+    }
+
+    if (is->thrd_no > 0) { // we are using threads, tell them we are done
+        pthread_mutex_lock(&is->stack_lck);
+        is->done = 1;
+        pthread_cond_broadcast(&is->data_available);
+        pthread_mutex_unlock(&is->stack_lck);
+
+        // block until all workers are done
+        for (int i = 0; i < is->thrd_no; i++) {
+            pthread_join(*(is->threads)[i], NULL);
+            free(is->threads[i]);
+        }
+        free(is->threads);
     }
 
     // copy the resulting digest into output
@@ -258,11 +361,13 @@ int ishake_final(ishake *is, uint8_t *output) {
     return 0;
 }
 
+
 void ishake_cleanup(ishake *is) {
     if (is->buf) free(is->buf);
     if (is->hash) free(is->hash);
     free(is);
 }
+
 
 int ishake_hash(unsigned char *data,
                 uint64_t len,
@@ -275,7 +380,7 @@ int ishake_hash(unsigned char *data,
     is = malloc(sizeof(ishake));
 
     int rinit = ishake_init(is, (uint32_t) ISHAKE_BLOCK_SIZE, hashbitlen,
-                            ISHAKE_APPEND_ONLY_MODE);
+                            ISHAKE_APPEND_ONLY_MODE, 0);
     if (rinit) {
         ishake_cleanup(is);
         return -2;
