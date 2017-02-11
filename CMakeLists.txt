@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 project(iSHAKE)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -fno-builtin-memset")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu99 -fno-builtin-memset")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -std=gnu99 -fno-builtin-memset")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=gnu99
+-fno-builtin-memset")
 
 set(ISHAKE_UTILS src/utils.c src/modulo_arithmetics.c)
 set(LIBKECCAK lib/libkeccak-tiny/keccak-tiny.c)
