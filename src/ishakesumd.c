@@ -2,7 +2,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -70,7 +69,7 @@ int main(int argc, char **argv) {
 
     char *ho;
     char **files = NULL;
-    char *dirname = "", *oldhash;
+    char *dirname = "", *oldhash = NULL;
 
     // file extensions with special meaning, should always be '.' + 3 bytes
     char *delext = ".del";
@@ -85,8 +84,6 @@ int main(int argc, char **argv) {
     uint8_t mode = ISHAKE_APPEND_ONLY_MODE;
     uint32_t filesno = 0;
     uint32_t block_size = BLOCK_SIZE;
-
-    pthread_t **threads;
 
     // parse arguments
     for (int i = 1; i < argc; i++) {
@@ -275,7 +272,7 @@ int main(int argc, char **argv) {
                     }
 
                     // see if we have a previous block and build it
-                    ishake_block *prev_ptr = NULL;
+                    ishake_block prev_ptr = NULL;
                     if (prev_n) {
                         // get the file name of the previous block
                         char *prevfile;
@@ -288,40 +285,36 @@ int main(int argc, char **argv) {
                         }
 
                         // recreate previous block
-                        ishake_block prev_b;
-                        prev_b.block_size = block_size;
-                        prev_b.header.length = 16;
-                        prev_b.header.value.nonce.nonce = prev_n;
-                        prev_b.header.value.nonce.next = del_n;
+                        ishake_block prev_b = malloc(sizeof(ishake_block_t));
+                        prev_b->block_size = block_size;
+                        prev_b->header.length = 16;
+                        prev_b->header.value.nonce.nonce = prev_n;
+                        prev_b->header.value.nonce.next = del_n;
 
                         // read its contents
                         FILE *prev_fd = fopen(prevfile, "r");
-                        prev_b.data = malloc(block_size);
-                        fread(prev_b.data, 1, block_size, prev_fd);
+                        prev_b->data = malloc(block_size);
+                        fread(prev_b->data, 1, block_size, prev_fd);
                         fclose(prev_fd);
-                        prev_ptr = &prev_b;
+                        prev_ptr = prev_b;
                         free(prevfile);
                     }
 
                     // recreate deleted block
-                    ishake_block del_b;
-                    del_b.block_size = block_size;
-                    del_b.header.length = 16;
-                    del_b.header.value.nonce.nonce = del_n;
-                    del_b.header.value.nonce.next = next_n;
+                    ishake_block del_b = malloc(sizeof(ishake_block_t));
+                    del_b->block_size = block_size;
+                    del_b->header.length = 16;
+                    del_b->header.value.nonce.nonce = del_n;
+                    del_b->header.value.nonce.next = next_n;
 
                     // read its contents
                     FILE *del_fd = fopen(delfile, "r");
-                    del_b.data = malloc(block_size);
-                    fread(del_b.data, 1, block_size, del_fd);
+                    del_b->data = malloc(block_size);
+                    fread(del_b->data, 1, block_size, del_fd);
                     fclose(del_fd);
 
                     ishake_delete(is, prev_ptr, del_b);
 
-                    if (prev_ptr != NULL) {
-                        free(prev_ptr->data);
-                    }
-                    free(del_b.data);
                     free(prevnonce);
                     free(delnonce);
                     free(nextnonce);
@@ -366,7 +359,7 @@ int main(int argc, char **argv) {
                     }
 
                     // see if we have a previous block and build it
-                    ishake_block *prev_ptr = NULL;
+                    ishake_block prev_ptr = NULL;
                     if (prev_n) {
                         // get the file name of the previous block
                         char *prevfile;
@@ -379,40 +372,36 @@ int main(int argc, char **argv) {
                         }
 
                         // modify previous block
-                        ishake_block prev_b;
-                        prev_b.block_size = block_size;
-                        prev_b.header.length = 16;
-                        prev_b.header.value.nonce.nonce = prev_n;
-                        prev_b.header.value.nonce.next  = next_n;
+                        ishake_block prev_b = malloc(sizeof(ishake_block_t));
+                        prev_b->block_size = block_size;
+                        prev_b->header.length = 16;
+                        prev_b->header.value.nonce.nonce = prev_n;
+                        prev_b->header.value.nonce.next  = next_n;
 
                         // read its contents
                         FILE *prev_fd = fopen(prevfile, "r");
-                        prev_b.data = malloc(block_size);
-                        fread(prev_b.data, 1, block_size, prev_fd);
+                        prev_b->data = malloc(block_size);
+                        fread(prev_b->data, 1, block_size, prev_fd);
                         fclose(prev_fd);
-                        prev_ptr = &prev_b;
+                        prev_ptr = prev_b;
                         free(prevfile);
                     }
 
                     // build new block
-                    ishake_block new_b;
-                    new_b.block_size = block_size;
-                    new_b.header.length = 16;
-                    new_b.header.value.nonce.nonce = new_n;
-                    new_b.header.value.nonce.next = next_n;
+                    ishake_block new_b = malloc(sizeof(ishake_block_t));
+                    new_b->block_size = block_size;
+                    new_b->header.length = 16;
+                    new_b->header.value.nonce.nonce = new_n;
+                    new_b->header.value.nonce.next = next_n;
 
                     // read its contents
                     FILE *new_fd = fopen(newfile, "r");
-                    new_b.data = malloc(block_size);
-                    fread(new_b.data, 1, block_size, new_fd);
+                    new_b->data = malloc(block_size);
+                    fread(new_b->data, 1, block_size, new_fd);
                     fclose(new_fd);
 
                     ishake_insert(is, prev_ptr, new_b);
 
-                    if (prev_ptr != NULL) {
-                        free(prev_ptr->data);
-                    }
-                    free(new_b.data);
                     free(nextnonce);
                     free(newnonce);
                     free(prevnonce);
@@ -456,55 +445,57 @@ int main(int argc, char **argv) {
                 }
 
                 // initialize old block
-                ishake_block oldblock;
-                uint64_t next;
-                oldblock.block_size = 0;
+                ishake_block oldblock = malloc(sizeof(ishake_block_t));
+                uint64_t next = 0;
+                oldblock->block_size = 0;
+                oldblock->data = NULL;
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
-                    oldblock.header.length = 8;
-                    oldblock.header.value.idx = idx;
+                    oldblock->header.length = 8;
+                    oldblock->header.value.idx = idx;
                 } else { // FULL R&W, we need the next block
                     // parse the name of the file again
                     char *sep = strchr(dp->d_name + 1, '.');
                     next = str2uint64_t(sep + 1, 10);
-                    oldblock.header.length = 16;
-                    oldblock.header.value.nonce.nonce = idx;
-                    oldblock.header.value.nonce.next = next;
+                    oldblock->header.length = 16;
+                    oldblock->header.value.nonce.nonce = idx;
+                    oldblock->header.value.nonce.next = next;
                 }
 
                 // read the contents of the old file
                 FILE *oldfp = fopen(old, "r");
                 i = 0;
                 do {
-                    oldblock.data = realloc(oldblock.data,
+                    oldblock->data = realloc(oldblock->data,
                                             block_size + block_size * i);
-                    b_read = fread(oldblock.data + block_size * i, 1,
+                    b_read = fread(oldblock->data + block_size * i, 1,
                                    block_size, oldfp);
-                    oldblock.block_size += b_read;
+                    oldblock->block_size += b_read;
                     i++;
                 } while (b_read == (unsigned long)block_size);
                 fclose(oldfp);
 
                 // initialize new block
-                ishake_block newblock;
-                newblock.block_size = 0;
+                ishake_block newblock = malloc(sizeof(ishake_block_t));
+                newblock->block_size = 0;
+                newblock->data = NULL;
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
-                    newblock.header.length = 8;
-                    newblock.header.value.idx = idx;
+                    newblock->header.length = 8;
+                    newblock->header.value.idx = idx;
                 } else { // FULL R&W, we need the next block
-                    newblock.header.length = 16;
-                    newblock.header.value.nonce.nonce = idx;
-                    newblock.header.value.nonce.next = next;
+                    newblock->header.length = 16;
+                    newblock->header.value.nonce.nonce = idx;
+                    newblock->header.value.nonce.next = next;
                 }
 
                 // read the contents of the new block
                 FILE *newfp = fopen(new, "r");
                 i = 0;
                 do {
-                    newblock.data = realloc(newblock.data,
+                    newblock->data = realloc(newblock->data,
                                             block_size + block_size * i);
-                    b_read = fread(newblock.data + block_size * i, 1,
+                    b_read = fread(newblock->data + block_size * i, 1,
                                    block_size, newfp);
-                    newblock.block_size += b_read;
+                    newblock->block_size += b_read;
                     i++;
                 } while (b_read == (unsigned long)block_size);
                 fclose(newfp);
@@ -513,8 +504,6 @@ int main(int argc, char **argv) {
                     panic(argv[0], "iSHAKE failed to update block %s.", 1, new);
                 }
 
-                free(oldblock.data);
-                free(newblock.data);
                 free(new);
                 continue;
             }
@@ -524,7 +513,6 @@ int main(int argc, char **argv) {
             if (strcmp(dp->d_name + file_l - ext_l, newext) == 0) {
                 // it is, get the corresponding file(s)
                 unsigned long b_read;
-                int i;
 
                 char *new;
                 resolve_file_path(&new, dirname, dp->d_name);
@@ -623,13 +611,13 @@ int main(int argc, char **argv) {
             size_t b_read;
 
             // in FULL R&W mode, files size must be less or equal to block size
-            ishake_block block;
-            block.data = malloc(block_size);
-            b_read = fread(block.data, 1, block_size, fp);
-            block.block_size = (uint32_t) b_read;
-            block.header.length = 16;
-            block.header.value.nonce.next = next;
-            block.header.value.nonce.nonce = nonce;
+            ishake_block block = malloc(sizeof(ishake_block_t));
+            block->data = malloc(block_size);
+            b_read = fread(block->data, 1, block_size, fp);
+            block->block_size = (uint32_t) b_read;
+            block->header.length = 16;
+            block->header.value.nonce.next = next;
+            block->header.value.nonce.nonce = nonce;
 
             // insert here
             ishake_insert(is, NULL, block);

@@ -71,7 +71,8 @@ typedef struct {
     unsigned char *data;
     uint32_t block_size;
     ishake_header header;
-} ishake_block;
+} ishake_block_t;
+typedef ishake_block_t *ishake_block;
 
 /**
  * A task for a thread to run the iSHAKE algorithm on a block.
@@ -132,7 +133,7 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len);
  *
  * Pass NULL as previous when inserting the first block.
  */
-int ishake_insert(ishake *is, ishake_block *previous, ishake_block new);
+int ishake_insert(ishake *is, ishake_block previous, ishake_block new);
 
 /**
  * Delete a block, updating the previous block to point to the one next to the
@@ -140,7 +141,7 @@ int ishake_insert(ishake *is, ishake_block *previous, ishake_block new);
  *
  * Pass NULL as previous when deleting the first block.
  */
-int ishake_delete(ishake *is, ishake_block *previous, ishake_block deleted);
+int ishake_delete(ishake *is, ishake_block previous, ishake_block deleted);
 
 /**
  * Update a block with new data. Old data must be provided too.
