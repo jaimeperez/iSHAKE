@@ -202,8 +202,8 @@ int main(int argc, char **argv) {
     }
 
     // initialize ishake
-    ishake *is;
-    is = malloc(sizeof(ishake));
+    ishake_t *is;
+    is = malloc(sizeof(ishake_t));
     if (ishake_init(is, block_size, (uint16_t) bits, mode, (uint16_t)thrno)) {
         panic(argv[0], "cannot initialize iSHAKE.", 0);
     }
@@ -272,7 +272,7 @@ int main(int argc, char **argv) {
                     }
 
                     // see if we have a previous block and build it
-                    ishake_block prev_ptr = NULL;
+                    ishake_block_t *prev_ptr = NULL;
                     if (prev_n) {
                         // get the file name of the previous block
                         char *prevfile;
@@ -285,7 +285,7 @@ int main(int argc, char **argv) {
                         }
 
                         // recreate previous block
-                        ishake_block prev_b = malloc(sizeof(ishake_block_t));
+                        ishake_block_t *prev_b = malloc(sizeof(ishake_block_t));
                         prev_b->block_size = block_size;
                         prev_b->header.length = 16;
                         prev_b->header.value.nonce.nonce = prev_n;
@@ -301,7 +301,7 @@ int main(int argc, char **argv) {
                     }
 
                     // recreate deleted block
-                    ishake_block del_b = malloc(sizeof(ishake_block_t));
+                    ishake_block_t *del_b = malloc(sizeof(ishake_block_t));
                     del_b->block_size = block_size;
                     del_b->header.length = 16;
                     del_b->header.value.nonce.nonce = del_n;
@@ -359,7 +359,7 @@ int main(int argc, char **argv) {
                     }
 
                     // see if we have a previous block and build it
-                    ishake_block prev_ptr = NULL;
+                    ishake_block_t *prev_ptr = NULL;
                     if (prev_n) {
                         // get the file name of the previous block
                         char *prevfile;
@@ -372,7 +372,7 @@ int main(int argc, char **argv) {
                         }
 
                         // modify previous block
-                        ishake_block prev_b = malloc(sizeof(ishake_block_t));
+                        ishake_block_t *prev_b = malloc(sizeof(ishake_block_t));
                         prev_b->block_size = block_size;
                         prev_b->header.length = 16;
                         prev_b->header.value.nonce.nonce = prev_n;
@@ -388,7 +388,7 @@ int main(int argc, char **argv) {
                     }
 
                     // build new block
-                    ishake_block new_b = malloc(sizeof(ishake_block_t));
+                    ishake_block_t *new_b = malloc(sizeof(ishake_block_t));
                     new_b->block_size = block_size;
                     new_b->header.length = 16;
                     new_b->header.value.nonce.nonce = new_n;
@@ -445,7 +445,7 @@ int main(int argc, char **argv) {
                 }
 
                 // initialize old block
-                ishake_block oldblock = malloc(sizeof(ishake_block_t));
+                ishake_block_t *oldblock = malloc(sizeof(ishake_block_t));
                 uint64_t next = 0;
                 oldblock->block_size = 0;
                 oldblock->data = NULL;
@@ -475,7 +475,7 @@ int main(int argc, char **argv) {
                 fclose(oldfp);
 
                 // initialize new block
-                ishake_block newblock = malloc(sizeof(ishake_block_t));
+                ishake_block_t *newblock = malloc(sizeof(ishake_block_t));
                 newblock->block_size = 0;
                 newblock->data = NULL;
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
@@ -611,7 +611,7 @@ int main(int argc, char **argv) {
             size_t b_read;
 
             // in FULL R&W mode, files size must be less or equal to block size
-            ishake_block block = malloc(sizeof(ishake_block_t));
+            ishake_block_t *block = malloc(sizeof(ishake_block_t));
             block->data = malloc(block_size);
             b_read = fread(block->data, 1, block_size, fp);
             block->block_size = (uint32_t) b_read;

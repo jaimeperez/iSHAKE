@@ -32,7 +32,7 @@
 
 
 int _hash_block(
-        ishake_block block,
+        ishake_block_t *block,
         uint64_t *hash,
         uint16_t hlen,
         hash_function func
@@ -64,7 +64,7 @@ int _hash_block(
     return 0;
 }
 
-uint64_t *ishake_hash_block(ishake *is, ishake_block block) {
+uint64_t *ishake_hash_block(ishake_t *is, ishake_block_t *block) {
     uint64_t *hash;
     hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
     if (_hash_block(block, hash, is->output_len, is->hash_func) != 0) {
@@ -77,7 +77,7 @@ uint64_t *ishake_hash_block(ishake *is, ishake_block block) {
  * Hash an ishake block and combine it into an existing hash in the way
  * specified by op.
  */
-int _hash_and_combine(ishake *is, ishake_block block, group_op op) {
+int _hash_and_combine(ishake_t *is, ishake_block_t *block, group_op op) {
     if (is->thrd_no > 0) { // use the workers to do this
         ishake_task_t *task = calloc(1, sizeof(ishake_task_t));
         task->block = block;
@@ -113,7 +113,7 @@ int _hash_and_combine(ishake *is, ishake_block block, group_op op) {
  * it with the existing hash.
  */
 void *_worker(void *arg) {
-    ishake *is = (ishake *) arg;
+    ishake_t *is = (ishake_t *) arg;
 
     pthread_mutex_lock(&(is->stack_lck));
     while (1) {
@@ -156,7 +156,7 @@ void *_worker(void *arg) {
  ***************************/
 
 
-int ishake_init(ishake *is,
+int ishake_init(ishake_t *is,
                 uint32_t blk_size,
                 uint16_t hashbitlen,
                 uint8_t mode,
@@ -205,7 +205,7 @@ int ishake_init(ishake *is,
 }
 
 
-int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
+int ishake_append(ishake_t *is, unsigned char *data, uint64_t len) {
     if (!is || !data || is->mode == ISHAKE_FULL_MODE) return -1;
 
     unsigned char *input = NULL;
@@ -225,7 +225,7 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
     unsigned char *ptr = input;
     while (len >= is->block_size) {
         is->block_no++;
-        ishake_block block = malloc(sizeof(ishake_block_t));
+        ishake_block_t *block = malloc(sizeof(ishake_block_t));
         block->data = calloc(len, sizeof(unsigned char));
         memcpy(block->data, ptr, len);
         block->block_size = is->block_size;
@@ -252,7 +252,7 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len) {
 }
 
 
-int ishake_insert(ishake *is, ishake_block previous, ishake_block new) {
+int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new) {
     if (is == NULL) {
         return -1;
     }
@@ -268,7 +268,7 @@ int ishake_insert(ishake *is, ishake_block previous, ishake_block new) {
         }
 
         // clone the block to change the "next" pointer
-        ishake_block new_prev = calloc(1, sizeof(ishake_block_t));
+        ishake_block_t *new_prev = calloc(1, sizeof(ishake_block_t));
         new_prev->block_size = previous->block_size;
         new_prev->header.length = previous->header.length;
         new_prev->header.value.nonce.nonce = previous->header.value.nonce.nonce;
@@ -277,6 +277,7 @@ int ishake_insert(ishake *is, ishake_block previous, ishake_block new) {
         memcpy(new_prev->data, previous->data, previous->block_size);
 
         // rehash the previous block with "next" pointing to new block
+        ishake_update(is, previous, new_prev);
         _hash_and_combine(is, previous, sub_mod);
         _hash_and_combine(is, new_prev, add_mod);
     }
@@ -288,7 +289,8 @@ int ishake_insert(ishake *is, ishake_block previous, ishake_block new) {
 }
 
 
-int ishake_delete(ishake *is, ishake_block previous, ishake_block deleted) {
+int ishake_delete(ishake_t *is, ishake_block_t *previous,
+                  ishake_block_t *deleted) {
     if (is == NULL) {
         return -1;
     }
@@ -299,7 +301,7 @@ int ishake_delete(ishake *is, ishake_block previous, ishake_block deleted) {
         }
 
         // clone the block to change the "next" pointer
-        ishake_block new = calloc(1, sizeof(ishake_block_t));
+        ishake_block_t *new = calloc(1, sizeof(ishake_block_t));
         new->block_size = previous->block_size;
         new->header.length = previous->header.length;
         new->header.value.nonce.nonce = previous->header.value.nonce.nonce;
@@ -309,8 +311,7 @@ int ishake_delete(ishake *is, ishake_block previous, ishake_block deleted) {
 
         // "remove" the previous block, and add it back with the new "next"
         // pointer
-        _hash_and_combine(is, previous, sub_mod);
-        _hash_and_combine(is, new, add_mod);
+        ishake_update(is, previous, new);
     }
 
     // delete the block
@@ -320,7 +321,7 @@ int ishake_delete(ishake *is, ishake_block previous, ishake_block deleted) {
 }
 
 
-int ishake_update(ishake *is, ishake_block old, ishake_block new) {
+int ishake_update(ishake_t *is, ishake_block_t *old, ishake_block_t *new) {
     if (is == NULL) {
         return -1;
     }
@@ -332,7 +333,7 @@ int ishake_update(ishake *is, ishake_block old, ishake_block new) {
 }
 
 
-int ishake_final(ishake *is, uint8_t *output) {
+int ishake_final(ishake_t *is, uint8_t *output) {
     if (output == NULL || is == NULL) return -1;
 
     uint64_t *empty = calloc((size_t)is->output_len/8, sizeof(uint64_t));
@@ -341,7 +342,7 @@ int ishake_final(ishake *is, uint8_t *output) {
         memcmp(is->hash, empty, (size_t)is->output_len/8) == 0)) {
         // hash the last remaining data
         is->block_no++;
-        ishake_block block = malloc(sizeof(ishake_block_t));
+        ishake_block_t *block = malloc(sizeof(ishake_block_t));
         block->data = is->buf;
         block->data = calloc(is->remaining, sizeof(unsigned char));
         memcpy(block->data, is->buf, is->remaining);
@@ -378,7 +379,7 @@ int ishake_final(ishake *is, uint8_t *output) {
 }
 
 
-void ishake_cleanup(ishake *is) {
+void ishake_cleanup(ishake_t *is) {
     if (is->buf) free(is->buf);
     if (is->hash) free(is->hash);
     free(is);
@@ -392,8 +393,8 @@ int ishake_hash(unsigned char *data,
 
     if (hashbitlen % 8) return -1;
 
-    ishake *is;
-    is = malloc(sizeof(ishake));
+    ishake_t *is;
+    is = malloc(sizeof(ishake_t));
 
     int rinit = ishake_init(is, (uint32_t) ISHAKE_BLOCK_SIZE, hashbitlen,
                             ISHAKE_APPEND_ONLY_MODE, 0);

@@ -163,8 +163,8 @@ int main(int argc, char *argv[]) {
     }
 
     // initialize ishake
-    ishake *is;
-    is = malloc(sizeof(ishake));
+    ishake_t *is;
+    is = malloc(sizeof(ishake_t));
     if (ishake_init(is,
                     block_size,
                     (uint16_t) bits,

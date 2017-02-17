@@ -72,14 +72,13 @@ typedef struct {
     uint32_t block_size;
     ishake_header header;
 } ishake_block_t;
-typedef ishake_block_t *ishake_block;
 
 /**
  * A task for a thread to run the iSHAKE algorithm on a block.
  */
 typedef struct _task_t {
     group_op op;
-    ishake_block block;
+    ishake_block_t *block;
     struct _task_t *prev;
 } ishake_task_t;
 typedef ishake_task_t* ishake_stack_t;
@@ -107,13 +106,13 @@ typedef struct {
     pthread_mutex_t combine_lck;
     pthread_cond_t data_available;
     ishake_stack_t stack;
-} ishake;
+} ishake_t;
 
 
 /**
  * Initialize a hash.
  */
-int ishake_init(ishake *is,
+int ishake_init(ishake_t *is,
                 uint32_t blk_size,
                 uint16_t hashbitlen,
                 uint8_t mode,
@@ -124,7 +123,7 @@ int ishake_init(ishake *is,
  * Append data to be hashed. Its size doesn't need to be multiple of the block
  * size.
  */
-int ishake_append(ishake *is, unsigned char *data, uint64_t len);
+int ishake_append(ishake_t *is, unsigned char *data, uint64_t len);
 
 /**
  * Insert a new block right after another, previous block. Its size MUST be
@@ -133,7 +132,7 @@ int ishake_append(ishake *is, unsigned char *data, uint64_t len);
  *
  * Pass NULL as previous when inserting the first block.
  */
-int ishake_insert(ishake *is, ishake_block previous, ishake_block new);
+int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new);
 
 /**
  * Delete a block, updating the previous block to point to the one next to the
@@ -141,17 +140,18 @@ int ishake_insert(ishake *is, ishake_block previous, ishake_block new);
  *
  * Pass NULL as previous when deleting the first block.
  */
-int ishake_delete(ishake *is, ishake_block previous, ishake_block deleted);
+int ishake_delete(ishake_t *is, ishake_block_t *previous, ishake_block_t
+*deleted);
 
 /**
  * Update a block with new data. Old data must be provided too.
  */
-int ishake_update(ishake *is, ishake_block old, ishake_block new);
+int ishake_update(ishake_t *is, ishake_block_t *old, ishake_block_t *new);
 
 /**
  * Finalise the process and get the hash result.
  */
-int ishake_final(ishake *is, uint8_t *output);
+int ishake_final(ishake_t *is, uint8_t *output);
 
 /**
  * Obtain the hash corresponding to some piece of data.
@@ -165,6 +165,6 @@ int ishake_hash(unsigned char *data,
 /**
  * Cleanup the resources attached to the passed iSHAKE structure.
  */
-void ishake_cleanup(ishake *is);
+void ishake_cleanup(ishake_t *is);
 
 #endif // _ISHAKE_H
