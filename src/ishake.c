@@ -126,7 +126,6 @@ void *_worker(void *arg) {
             uint64_t *hash = ishake_hash_block(is, task->block);
             free(task->block->data);
             free(task->block);
-            free(task);
 
             // combine the resulting hash
             pthread_mutex_lock(&is->combine_lck);
@@ -134,6 +133,7 @@ void *_worker(void *arg) {
                     (is->output_len/8), task->op);
             pthread_mutex_unlock(&is->combine_lck);
             free(hash);
+            free(task);
 
             // do this once we stop calling ishake_append() in main()
             pthread_mutex_lock(&is->stack_lck);
