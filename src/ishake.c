@@ -278,8 +278,6 @@ int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new) {
 
         // rehash the previous block with "next" pointing to new block
         ishake_update(is, previous, new_prev);
-        _hash_and_combine(is, previous, sub_mod);
-        _hash_and_combine(is, new_prev, add_mod);
     }
 
     // add the new block
