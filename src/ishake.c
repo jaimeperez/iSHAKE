@@ -336,8 +336,15 @@ int ishake_final(ishake_t *is, uint8_t *output) {
 
     uint64_t *empty = calloc((size_t)is->output_len/8, sizeof(uint64_t));
 
-    if (is->remaining || (!is->proc_bytes &&
-        memcmp(is->hash, empty, (size_t)is->output_len/8) == 0)) {
+    if (is->mode == ISHAKE_APPEND_ONLY_MODE &&
+         ( // we still need to hash, because either:
+           is->remaining || // there's still data remaining, or
+           ( // we didn't hash anything yet, so we need to hash an empty string
+             (memcmp(is->hash, empty, (size_t)is->output_len/8) == 0) &&
+             !is->proc_bytes
+           )
+         )
+    ) {
         // hash the last remaining data
         is->block_no++;
         ishake_block_t *block = malloc(sizeof(ishake_block_t));
