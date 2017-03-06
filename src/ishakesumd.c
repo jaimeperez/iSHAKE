@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "ishake.h"
@@ -33,6 +34,8 @@ void usage(char *program) {
                    "blocks that have changed.\n");
     printf("\t--threads\tThe number of threads to use. No threads are used "
                    "by default.\n");
+    printf("\t--profile\tMeasure the performance of the operation(s) to run"
+                   ".\n");
     printf("\t--quiet\t\tOutput only the resulting hash string.\n");
     printf("\t--help\t\tPrint this help.\n");
     printf("\tdir\t\tThe path to a directory whose contents will be hashed in "
@@ -76,7 +79,7 @@ int main(int argc, char **argv) {
     char *oldext = ".old";
     char *newext = ".new";
 
-    int shake = 0, blocks = 0, quiet = 0, rehash = 0, thrno = 0;
+    int shake = 0, blocks = 0, quiet = 0, rehash = 0, thrno = 0, profile = 0;
     unsigned long bits = 0;
 
     uint8_t *buf;
@@ -150,6 +153,8 @@ int main(int argc, char **argv) {
             }
             thrno = atoi(argv[i + 1]);
             i++; // two arguments consumed, advance the pointer!
+        } else if (strcmp("--profile", argv[i]) == 0) {
+            profile = 1;
         } else if (strcmp("--help", argv[i]) == 0) {
             usage(argv[0]);
         } else {
@@ -219,6 +224,16 @@ int main(int argc, char **argv) {
     if ((dfd = opendir(dirname)) == NULL) {
         panic(argv[0], "cannot find directory '%s' or read access denied.",
               1, dirname);
+    }
+
+    // start measuring performance
+    clock_t start_cpu = 0, end_cpu = 0;
+    struct timespec start_wall, end_wall;
+    double elapsed_cpu = 0, elapsed_wall = 0;
+    if (profile) {
+        start_cpu = clock();
+        clock_gettime(CLOCK_MONOTONIC, &start_wall);
+
     }
 
     // iterate over list of files in directory
@@ -639,12 +654,25 @@ int main(int argc, char **argv) {
         panic(argv[0], "cannot compute hash after processing data.", 0);
     }
 
+    if (profile) {
+        end_cpu = clock();
+        clock_gettime(CLOCK_MONOTONIC, &end_wall);
+        elapsed_cpu = ((double) (end_cpu - start_cpu)) / CLOCKS_PER_SEC;
+        elapsed_wall = (end_wall.tv_sec - start_wall.tv_sec);
+        elapsed_wall += (end_wall.tv_nsec - start_wall.tv_nsec) / 1000000000.0;
+    }
+
     // convert to hex and print
     bin2hex(&ho, bo, bits / 8);
     if (quiet) {
         printf("%s\n", ho);
     } else {
         printf("%s - %s\n", ho, dirname);
+    }
+
+    if (profile) {
+        printf("CPU time: %f\n", elapsed_cpu);
+        printf("Wall time: %f\n", elapsed_wall);
     }
 
     // clean
