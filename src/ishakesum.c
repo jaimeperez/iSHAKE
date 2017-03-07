@@ -27,6 +27,10 @@ void usage(char *program) {
                    "number for each version is the default.\n");
     printf("\t--block-size\tThe size in bytes of the iSHAKE internal blocks."
                    "\n");
+    printf("\t--threads\tThe number of threads to use. No threads are used "
+                   "by default.\n");
+    printf("\t--profile\tMeasure the performance of the operation(s) to run"
+                   ".\n");
     printf("\t--quiet\t\tOutput only the resulting hash string.\n");
     printf("\t--help\t\tPrint this help.\n");
     printf("\tfile\t\tThe file to hash. Data can also be piped into the "
@@ -62,7 +66,7 @@ int main(int argc, char *argv[]) {
     char *ho;
     uint32_t block_size = BLOCK_SIZE;
 
-    int shake = 0, blocks = 0, hex_input = 0, quiet = 0;
+    int shake = 0, blocks = 0, hex_input = 0, quiet = 0, thrno = 0, profile = 0;
     unsigned long bits = 0;
     char *filename = "";
 
@@ -76,6 +80,8 @@ int main(int argc, char *argv[]) {
             hex_input = 1;
         } else if (strcmp("--quiet", argv[i]) == 0) {
             quiet = 1;
+        } else if (strcmp("--profile", argv[i]) == 0) {
+            profile = 1;
         } else if (strcmp("--bits", argv[i]) == 0) {
             char *bits_str;
             bits = strtoul(argv[i + 1], &bits_str, 10);
@@ -100,6 +106,13 @@ int main(int argc, char *argv[]) {
             if (block_size == 0) {
                 panic(argv[0], "--block-size can't be zero.", 0);
             }
+            i++; // two arguments consumed, advance the pointer!
+        } else if (strcmp("--threads", argv[i]) == 0) {
+            if (i == argc - 1) {
+                panic(argv[0], "--threads must be followed by the amount of "
+                        "threads to use.", 0);
+            }
+            thrno = atoi(argv[i + 1]);
             i++; // two arguments consumed, advance the pointer!
         } else if (strcmp("--help", argv[i]) == 0) {
             usage(argv[0]);
@@ -162,6 +175,16 @@ int main(int argc, char *argv[]) {
             }
     }
 
+    // start measuring performance
+    clock_t start_cpu = 0, end_cpu = 0;
+    struct timespec start_wall, end_wall;
+    double elapsed_cpu = 0, elapsed_wall = 0;
+    if (profile) {
+        start_cpu = clock();
+        clock_gettime(CLOCK_MONOTONIC, &start_wall);
+
+    }
+
     // initialize ishake
     ishake_t *is;
     is = malloc(sizeof(ishake_t));
@@ -169,7 +192,7 @@ int main(int argc, char *argv[]) {
                     block_size,
                     (uint16_t) bits,
                     ISHAKE_APPEND_ONLY_MODE,
-                    0)
+                    thrno)
     ) {
         panic(argv[0], "cannot initialize iSHAKE.", 0);
     }
@@ -201,12 +224,25 @@ int main(int argc, char *argv[]) {
         panic(argv[0], "cannot compute hash after processing data.", 0);
     }
 
+    if (profile) {
+        end_cpu = clock();
+        clock_gettime(CLOCK_MONOTONIC, &end_wall);
+        elapsed_cpu = ((double) (end_cpu - start_cpu)) / CLOCKS_PER_SEC;
+        elapsed_wall = (end_wall.tv_sec - start_wall.tv_sec);
+        elapsed_wall += (end_wall.tv_nsec - start_wall.tv_nsec) / 1000000000.0;
+    }
+
     // convert to hex and print
     bin2hex(&ho, bo, bits / 8);
     if (quiet) {
         printf("%s\n", ho);
     } else {
         printf("%s - %s\n", ho, filename);
+    }
+
+    if (profile) {
+        printf("CPU time: %f\n", elapsed_cpu);
+        printf("Wall time: %f\n", elapsed_wall);
     }
 
     // clean
