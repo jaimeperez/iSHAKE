@@ -17,7 +17,16 @@ unstable and buggy. Please do not use it unless you know what you are doing.
 
 ## Build
 
-This project uses `cmake` and `make` to build. Just run `cmake` in the root 
+This project depends on the
+[KeccakCodePackage](https://github.com/gvanas/KeccakCodePackage). We will try
+to download and build it for you, optimizing it by default for generic 64-bit
+platforms. If you are running on a different platform, take a look at the 
+different targets provided by the KeccakCodePackage `Makefile.build`, and set
+the `KECCAK_TARGET` environment variable to the one that fits the most. Make
+sure to use a target to build the library, not the `KeccakSum` utility or the
+tests. That means **only the `*/libkeccak.a` targets can be used**.
+
+We use `cmake` and `make` to build. Just run `cmake` in the root 
 directory of the project to generate a _Makefile_, and then run `make` to build.
 
 ```sh
