@@ -30,11 +30,13 @@ add_executable(combine ${COMBINE_FILES})
 
 target_link_libraries(sha3sum libkeccak.a)
 
+add_custom_target(KeccakCodePackage)
 add_custom_command(
-        TARGET sha3sum
+        TARGET KeccakCodePackage
         COMMAND mkdir -p ${CMAKE_SOURCE_DIR}/dependencies
         COMMAND git clone git@github.com:gvanas/KeccakCodePackage.git ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage || true
         COMMAND cd ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage && make ${KECCAK_TARGET}
         COMMAND cp -f ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage/bin/${KECCAK_TARGET} lib/
-        COMMAND cp -f -r ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage/bin/${KECCAK_TARGET}.headers lib/
+        COMMAND cp -f -r ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage/bin/${KECCAK_TARGET}.headers includes/
 )
+add_dependencies(sha3sum KeccakCodePackage)
