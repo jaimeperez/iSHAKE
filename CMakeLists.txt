@@ -40,8 +40,8 @@ add_custom_command(
         COMMAND mkdir -p ${CMAKE_SOURCE_DIR}/dependencies
         COMMAND git clone https://github.com/gvanas/KeccakCodePackage.git ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage || true
         COMMAND cd ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage && make ${KECCAK_TARGET}
-        COMMAND cp -f ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage/bin/${KECCAK_TARGET} lib/
-        COMMAND cp -f -r ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage/bin/${KECCAK_TARGET}.headers includes/
+        COMMAND cp -f ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage/bin/${KECCAK_TARGET} ${CMAKE_SOURCE_DIR}/lib/
+        COMMAND cp -f -r ${CMAKE_SOURCE_DIR}/dependencies/KeccakCodePackage/bin/${KECCAK_TARGET}.headers ${CMAKE_SOURCE_DIR}/includes/
 )
 add_dependencies(libishake KeccakCodePackage)
 add_dependencies(sha3sum KeccakCodePackage)
