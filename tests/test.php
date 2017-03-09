@@ -3,8 +3,8 @@
 $files = glob('tests/*shake/*.rsp');
 
 $_CMDS = array(
-    'shake' => './sha3sum %algo% --hex --quiet --bytes %bytes% %file%',
-    'ishake' => './ishakesum %algo% --hex --quiet --bits %bits% %file%',
+    'shake' => 'bin/sha3sum %algo% --hex --quiet --bytes %bytes% %file%',
+    'ishake' => 'bin/ishakesum %algo% --hex --quiet --bits %bits% %file%',
 );
 $_ALGOS = array(
     'SHAKE128' => '--shake128',
