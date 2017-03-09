@@ -28,14 +28,13 @@
 #include <string.h>
 #include "ishake.h"
 #include "utils.h"
-#include "../lib/libkeccak-tiny/keccak-tiny.h"
+#include "KeccakCodePackage.h"
 
 
 int _hash_block(
+        ishake_t *is,
         ishake_block_t *block,
-        uint64_t *hash,
-        uint16_t hlen,
-        hash_function func
+        uint64_t *hash
 ) {
     ishake_header h = block->header;
     if (block->header.length == 8) { // just an index
@@ -53,21 +52,29 @@ int _hash_block(
     memcpy(data + block->block_size, &h.value, h.length);
 
     uint8_t *buf;
-    buf = calloc(hlen, sizeof(uint8_t));
+    buf = calloc((unsigned int)is->output_len / 8, sizeof(uint8_t));
 
-    func(buf, hlen, data, block->block_size + h.length);
+    Keccak_HashInstance keccak;
+    if (is->output_len <= 4160) { // we're using iSHAKE128
+        Keccak_HashInitialize_SHAKE128(&keccak);
+    } else { // iSHAKE256
+        Keccak_HashInitialize_SHAKE256(&keccak);
+    }
+    keccak.fixedOutputLength = is->output_len;
+    Keccak_HashUpdate(&keccak, data, (block->block_size + h.length) * 8);
+    Keccak_HashFinal(&keccak, buf);
     free(data);
 
     // cast the resulting hash to (uint64_t *) for simplicity
-    uint8_t2uint64_t(hash, buf, (unsigned long)hlen);
+    uint8_t2uint64_t(hash, buf, (unsigned long)is->output_len/8);
     free(buf);
     return 0;
 }
 
 uint64_t *ishake_hash_block(ishake_t *is, ishake_block_t *block) {
     uint64_t *hash;
-    hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
-    if (_hash_block(block, hash, is->output_len, is->hash_func) != 0) {
+    hash = calloc((size_t)is->output_len/64, sizeof(uint64_t));
+    if (_hash_block(is, block, hash) != 0) {
         return NULL;
     }
     return hash;
@@ -100,7 +107,7 @@ int _hash_and_combine(ishake_t *is, ishake_block_t *block, group_op op) {
     if (hash == NULL) {
         return -1;
     }
-    combine(is->hash, hash, (uint16_t)(is->output_len/8), op);
+    combine(is->hash, hash, (uint16_t)(is->output_len/64), op);
     free(hash);
     return 0;
 }
@@ -130,7 +137,7 @@ void *_worker(void *arg) {
             // combine the resulting hash
             pthread_mutex_lock(&is->combine_lck);
             combine(is->hash, hash, (uint16_t)
-                    (is->output_len/8), task->op);
+                    (is->output_len/64), task->op);
             pthread_mutex_unlock(&is->combine_lck);
             free(hash);
             free(task);
@@ -176,9 +183,8 @@ int ishake_init(ishake_t *is,
     is->proc_bytes = 0;
     is->remaining = 0;
     is->buf = 0;
-    is->output_len = hashbitlen / (uint16_t)8;
-    is->hash = calloc((size_t)is->output_len/8, sizeof(uint64_t));
-    is->hash_func = (hashbitlen <= 4160) ? shake128 : shake256;
+    is->output_len = hashbitlen;// / (uint16_t)8;
+    is->hash = calloc((size_t)is->output_len/64, sizeof(uint64_t));
 
     if (threads > 0) { // we are asked to use threads
         // basic thread initialization
@@ -334,13 +340,13 @@ int ishake_update(ishake_t *is, ishake_block_t *old, ishake_block_t *new) {
 int ishake_final(ishake_t *is, uint8_t *output) {
     if (output == NULL || is == NULL) return -1;
 
-    uint64_t *empty = calloc((size_t)is->output_len/8, sizeof(uint64_t));
+    uint64_t *empty = calloc((size_t)is->output_len/64, sizeof(uint64_t));
 
     if (is->mode == ISHAKE_APPEND_ONLY_MODE &&
          ( // we still need to hash, because either:
            is->remaining || // there's still data remaining, or
            ( // we didn't hash anything yet, so we need to hash an empty string
-             (memcmp(is->hash, empty, (size_t)is->output_len/8) == 0) &&
+             (memcmp(is->hash, empty, (size_t)is->output_len/64) == 0) &&
              !is->proc_bytes
            )
          )
@@ -378,7 +384,7 @@ int ishake_final(ishake_t *is, uint8_t *output) {
     }
 
     // copy the resulting digest into output
-    uint64_t2uint8_t(output, is->hash, (unsigned long)is->output_len / 8);
+    uint64_t2uint8_t(output, is->hash, (unsigned long)is->output_len/64);
 
     return 0;
 }

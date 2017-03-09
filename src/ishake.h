@@ -96,7 +96,6 @@ typedef struct {
     uint32_t remaining;
     uint64_t *hash;
     unsigned char *buf;
-    hash_function hash_func;
 
     // threading related properties
     uint16_t thrd_no;

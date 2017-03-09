@@ -1,12 +1,23 @@
 #include <dirent.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "../lib/libkeccak-tiny/keccak-tiny.h"
+#include "KeccakCodePackage.h"
 #include "utils.h"
 
 #define BLOCK_SIZE 1024
+#define algorithm_Keccak 0
+
+typedef struct {
+    unsigned int algorithm;
+    unsigned int rate;
+    unsigned int capacity;
+    unsigned int hashbitlen;
+    unsigned char delimitedSuffix;
+} Specifications;
+
 
 /*
  * Print help on how to use this program and exit.
@@ -49,11 +60,25 @@ void panic(char *program, char *format, int argc, ...) {
     exit(EXIT_FAILURE);
 }
 
+int processFile(char *file, Keccak_HashInstance *keccak) {
+    unsigned long b_read;
+    uint8_t *buf = malloc(BLOCK_SIZE);
+    FILE *fp = fopen(file, "r");
+    do {
+        b_read = fread(buf, 1, BLOCK_SIZE, fp);
+        if (b_read > 0) {
+            uint8_t *input = buf;
+            Keccak_HashUpdate(keccak, input, b_read * 8);
+        }
+    } while(b_read > 0);
+    fclose(fp);
+    free(buf);
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     DIR *dfd;
-    char **files = NULL;
     struct dirent *dp;
-    uint32_t fno = 0;
 
     uint8_t *out;
     char *output;
@@ -62,24 +87,50 @@ int main(int argc, char *argv[]) {
     unsigned long bytes = 0;
     char *dirname = "";
 
+    Keccak_HashInstance keccak;
+    Specifications specs;
+    specs.algorithm = algorithm_Keccak;
+    specs.rate = 1344;
+    specs.capacity = 256;
+    specs.hashbitlen = 264;
+    specs.delimitedSuffix = 0x1F;
+
     // parse arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp("--shake128", argv[i]) == 0) {
+            specs.rate = 1344;
+            specs.capacity = 256;
+            specs.hashbitlen = 264;
             shake = 128;
             sha = 0;
         } else if (strcmp("--shake256", argv[i]) == 0) {
+            specs.rate = 1088;
+            specs.capacity = 512;
+            specs.hashbitlen = 528;
             shake = 256;
             sha = 0;
         } else if (strcmp("--sha3-224", argv[i]) == 0) {
+            specs.rate = 1152;
+            specs.capacity = 448;
+            specs.hashbitlen = 224;
             sha = 224;
             shake = 0;
         } else if (strcmp("--sha3-256", argv[i]) == 0) {
+            specs.rate = 1088;
+            specs.capacity = 512;
+            specs.hashbitlen = 256;
             sha = 256;
             shake = 0;
         } else if (strcmp("--sha3-384", argv[i]) == 0) {
+            specs.rate = 832;
+            specs.capacity = 768;
+            specs.hashbitlen = 384;
             sha = 384;
             shake = 0;
         } else if (strcmp("--sha3-512", argv[i]) == 0) {
+            specs.rate = 576;
+            specs.capacity = 1024;
+            specs.hashbitlen = 512;
             sha = 512;
             shake = 0;
         } else if (strcmp("--quiet", argv[i]) == 0) {
@@ -114,6 +165,51 @@ int main(int argc, char *argv[]) {
             dirname = argv[i];
         }
     }
+    if (bytes) {
+        specs.hashbitlen = (unsigned int)bytes * 8;
+    } else {
+        bytes = specs.hashbitlen / 8;
+    }
+
+    if (shake != 0) { // we are asked for a shake hash (extensible output)
+        switch (shake) {
+            case 128:
+                if (bytes == 0) {
+                    bytes = 32;
+                }
+                out = malloc(bytes);
+                break;
+            default:
+                if (bytes == 0) {
+                    bytes = 64;
+                }
+                out = malloc(bytes);
+        }
+    } else { // we are asked for a SHA3 hash (fixed-length output)
+        specs.delimitedSuffix = 0x06;
+        if (bytes != 0) {
+            printf("Cannot specify output bytes with fixed-size SHA3 "
+                           "functions.\n");
+            return -1;
+        }
+        switch (sha) {
+            case 224:
+                bytes = 28;
+                out = malloc(bytes);
+                break;
+            case 384:
+                bytes = 48;
+                out = malloc(bytes);
+                break;
+            case 512:
+                bytes = 64;
+                out = malloc(bytes);
+                break;
+            default:
+                bytes = 32;
+                out = malloc(bytes);
+        }
+    }
 
     // open directory
     if ((dfd = opendir(dirname)) == NULL) {
@@ -121,6 +217,10 @@ int main(int argc, char *argv[]) {
               1, dirname);
     }
 
+    if (Keccak_HashInitialize(&keccak, specs.rate, specs.capacity,
+                              specs.hashbitlen, specs.delimitedSuffix)) {
+        return -1;
+    }
 
     // build array of files
     while ((dp = readdir(dfd)) != NULL) {
@@ -132,56 +232,10 @@ int main(int argc, char *argv[]) {
         snprintf(file, strlen(dirname) + 1 + strlen(dp->d_name) + 1,
                  "%s/%s", dirname, dp->d_name);
 
-        // add file to list
-        files = realloc(files, sizeof(char *) * (fno + 1));
-        files[fno] = file;
-        fno++;
+        processFile(file, &keccak);
     }
 
-    if (shake != 0) { // we are asked for a shake hash (extensible output)
-        switch (shake) {
-            case 128:
-                if (bytes == 0) {
-                    bytes = 32;
-                }
-                out = malloc(bytes);
-                shakef128(out, bytes, files, fno);
-                break;
-            default:
-                if (bytes == 0) {
-                    bytes = 64;
-                }
-                out = malloc(bytes);
-                shakef256(out, bytes, files, fno);
-        }
-    } else { // we are asked for a SHA3 hash (fixed-length output)
-        if (bytes != 0) {
-            printf("Cannot specify output bytes with fixed-size SHA3 "
-                           "functions.\n");
-            return -1;
-        }
-        switch (sha) {
-            case 224:
-                bytes = 28;
-                out = malloc(bytes);
-                sha3f_224(out, 28, files, fno);
-                break;
-            case 384:
-                bytes = 48;
-                out = malloc(bytes);
-                sha3f_384(out, 48, files, fno);
-                break;
-            case 512:
-                bytes = 64;
-                out = malloc(bytes);
-                sha3f_512(out, 64, files, fno);
-                break;
-            default:
-                bytes = 32;
-                out = malloc(bytes);
-                sha3f_256(out, 32, files, fno);
-        }
-    }
+    Keccak_HashFinal(&keccak, out);
 
     // convert to hex and print
     bin2hex(&output, out, (int)bytes);
@@ -191,7 +245,6 @@ int main(int argc, char *argv[]) {
         printf("%s - %s\n", output, dirname);
     }
 
-    free(files);
     closedir(dfd);
     free(out);
     free(output);
