@@ -53,7 +53,7 @@ class IShakeModes(object):
             if is_exe(program):
                 return program
         else:
-            os.environ["PATH"] += os.pathsep + '../'
+            os.environ["PATH"] += os.pathsep + '../bin/'
             for path in os.environ["PATH"].split(os.pathsep):
                 path = path.strip('"')
                 exe_file = os.path.join(path, program)
