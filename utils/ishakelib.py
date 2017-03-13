@@ -40,7 +40,8 @@ class IShakeModes(object):
 
         self._profile = '--profile' if profile else ''
         self._tempdir = tempfile.mkdtemp()
-        self._binary = self._which('ishakesumd')
+        self._ishakesumd = self._which('ishakesumd')
+        self._ishakesum = self._which('ishakesum')
 
     def _which(self, program):
         """Find a command and return a path to it."""
@@ -75,7 +76,7 @@ class IShakeModes(object):
             self._hash = result[0]
             cpu = result[1].split(':')[1].strip()
             wall = result[2].split(':')[1].strip()
-            return [self._hash, cpu, wall]
+            return {'digest': self._hash, 'cpu': cpu, 'wall': wall}
 
         self._hash = subprocess.Popen(command, shell=True, stdout=PIPE).stdout.read().strip()
         return self._hash
@@ -83,7 +84,7 @@ class IShakeModes(object):
     def hash(self):
         """Hash the contents of a directory."""
         return self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s %s" %
-                         (self._binary, self._mode, self._block_size, self._output_bits, self._threads,
+                         (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                           self._profile, self._alg, self._dir))
 
     @property
@@ -96,6 +97,7 @@ class IShakeAppendOnly(IShakeModes):
     """Append-only (fixed size) mode, allowing to append blocks or update existing blocks."""
 
     def __init__(self, dir='.', threads=0, profile=False, block_size=1048576, output_bits=2688, mode=128):
+        self._echo = self._which('echo')
         super(IShakeAppendOnly, self).__init__('APPEND_ONLY', dir=dir, threads=threads, profile=profile,
                                                block_size=block_size, output_bits=output_bits, mode=mode)
 
@@ -107,7 +109,7 @@ class IShakeAppendOnly(IShakeModes):
         dst = "%s/.%d.new" % (self._tempdir, idx)
         copyfile(src, dst)
         result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
-                           (self._binary, self._mode, self._block_size, self._output_bits, self._threads,
+                           (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                             self._profile, self._alg, self._hash, self._tempdir))
         os.remove(dst)
         return result
@@ -122,12 +124,19 @@ class IShakeAppendOnly(IShakeModes):
         copyfile(oldsrc, olddst)
         copyfile(newsrc, newdst)
         result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
-                           (self._binary, self._mode, self._block_size, self._output_bits, self._threads,
+                           (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                             self._profile, self._alg, self._hash, self._tempdir))
 
         os.remove(olddst)
         os.remove(newdst)
         return result
+
+    def hash(self, data=''):
+        if data:
+            return self._run('%s -n \'%s\' | %s --%d --block-size %d --bits %d --quiet --threads %d %s' %
+                             (self._echo, data, self._ishakesum, self._mode, self._block_size, self._output_bits,
+                              self._threads, self._profile))
+        super(IShakeAppendOnly, self).hash()
 
 
 class IShakeFulLRW(IShakeModes):
@@ -151,7 +160,7 @@ class IShakeFulLRW(IShakeModes):
             copyfile("%s/%s" % (self._dir, prev), prevdst)
         copyfile("%s/%s" % (self._dir, new), dst)
         result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
-                           (self._binary, self._mode, self._block_size, self._output_bits, self._threads,
+                           (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                             self._profile, self._alg, self._hash, self._tempdir))
 
         os.remove(prevdst)
@@ -172,7 +181,7 @@ class IShakeFulLRW(IShakeModes):
             copyfile("%s/%s" % (self._dir, prev), prevdst)
         copyfile("%s/%s" % (self._dir, delete), dst)
         result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
-                           (self._binary, self._mode, self._block_size, self._output_bits, self._threads,
+                           (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                             self._profile, self._alg, self._hash, self._tempdir))
 
         os.remove(prevdst)
