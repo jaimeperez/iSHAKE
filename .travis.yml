@@ -1,7 +1,8 @@
 sudo: required
 dist: trusty
 language: c
-before_install: sudo apt-get install -qq php5 xsltproc
+python:
+    - "2.7"
 addons:
  apt:
    sources:
@@ -9,6 +10,8 @@ addons:
    packages:
    - gcc-4.8
    - g++-4.8
+   - python
+   - xsltproc
 script:
    - cmake .
    - make VERBOSE=1
