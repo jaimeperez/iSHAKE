@@ -6,7 +6,7 @@ import re
 import subprocess
 import tempfile
 
-basedir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)));
+basedir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 files = glob.glob('%s/tests/*/*.rsp' % basedir)
 cmds = {
     'shake': '%s/%s' % (basedir, 'bin/sha3sum %alg% --hex --quiet --bytes %bytes% %file%'),
