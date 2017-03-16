@@ -10,11 +10,10 @@ addons:
    packages:
    - gcc-4.8
    - g++-4.8
-   - python
    - xsltproc
 script:
    - cmake .
    - make VERBOSE=1
-   - php tests/test.php
+   - tests/test_output.py
 env:
    global: CXX=g++-4.8
