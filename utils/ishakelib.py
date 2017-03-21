@@ -152,44 +152,68 @@ class IShakeFulLRW(IShakeModes):
         super(IShakeFulLRW, self).__init__('FULL', dir=dir, threads=threads, profile=profile,
                                            block_size=block_size, output_bits=output_bits, mode=mode)
 
-    def insert(self, new, prev=None, next=None):
-        """Insert a block from a file, specifying the previous and next blocks in the chain."""
+    def insert(self, new, new_nonce, prev=None, prev_nonce=None, next_nonce=None):
+        """Insert a block from a file, specifying the previous and next blocks in the chain.
+
+        Arguments:
+        new: the name of the file containing the block to insert
+        new_nonce: the nonce to use for the block to insert
+        prev: the name of the file containing the block previous to the one being inserted, if any
+        prev_nonce: the nonce to use for the previous block, if any
+        next_nonce: the nonce to use for the next block, if any
+        """
+
+        if (prev and not prev_nonce) or (prev_nonce and not prev):
+            raise Exception('both the previous block file and its nonce must be specified')
 
         dst = "%s/." % self._tempdir
-        dst += "%s" % (prev if prev else '')
-        dst += ".%s." % new
-        dst += "%s" % (next if next else '')
+        dst += "%s" % ("%d" % prev_nonce if prev else '')
+        dst += ".%d." % new_nonce
+        dst += "%s" % ("%d" % next_nonce if next_nonce else '')
         dst += ".new"
 
-        prevdst = "%s/%s" % (self._tempdir, prev)
         if prev:
+            prevdst = "%s/%d" % (self._tempdir, prev_nonce)
             copyfile("%s/%s" % (self._dir, prev), prevdst)
         copyfile("%s/%s" % (self._dir, new), dst)
         result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
                            (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                             self._profile, self._alg, self._hash, self._tempdir))
 
-        os.remove(prevdst)
+        if prev:
+            os.remove(prevdst)
         os.remove(dst)
         return result
 
-    def delete(self, delete, prev=None, next=None):
-        """Delete a block corresponding to a file, specifying the previous and next blocks in the chain."""
+    def delete(self, delete, delete_nonce, prev=None, prev_nonce=None, next_nonce=None):
+        """Delete a block corresponding to a file, specifying the previous and next blocks in the chain.
+
+        Arguments:
+        delete: the name of the file containing the block to delete
+        delete_nonce: the nonce to use for the block to delete
+        prev: the name of the file containing the block previous to the one being deleted, if any
+        prev_nonce: the nonce to use for the previous block, if any
+        next_nonce: the nonce to use for the next block, if any
+        """
+
+        if (prev and not prev_nonce) or (prev_nonce and not prev):
+            raise Exception('both the previous block file and its nonce must be specified')
 
         dst = "%s/." % self._tempdir
-        dst += "%s" % (prev if prev else '')
-        dst += ".%s." % delete
-        dst += "%s" % (next if next else '')
+        dst += "%s" % ("%d" % prev_nonce if prev else '')
+        dst += ".%d." % delete_nonce
+        dst += "%s" % ("%d" % next_nonce if next_nonce else '')
         dst += ".del"
 
-        prevdst = "%s/%s" % (self._tempdir, prev)
         if prev:
+            prevdst = "%s/%d" % (self._tempdir, prev_nonce)
             copyfile("%s/%s" % (self._dir, prev), prevdst)
         copyfile("%s/%s" % (self._dir, delete), dst)
         result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
                            (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                             self._profile, self._alg, self._hash, self._tempdir))
 
-        os.remove(prevdst)
+        if prev:
+            os.remove(prevdst)
         os.remove(dst)
         return result
