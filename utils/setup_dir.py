@@ -52,7 +52,7 @@ def setup(dir, block_size, total_bytes):
         tot_b -= len
         written_b += len
 
-    print "%i files written." % written_b
+    print "%i bytes written to: %s" % (written_b, dir)
 
 
 if __name__ == '__main__':
