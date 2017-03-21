@@ -81,6 +81,29 @@ class IShakeModes(object):
         self._hash = subprocess.Popen(command, shell=True, stdout=PIPE).stdout.read().strip()
         return self._hash
 
+    def update(self, old, new, blk_id):
+        """Update the has according to the changes performed to a given file, respect to its old version.
+
+        Arguments:
+        old: the file name of the old block
+        new: the file name of the new block
+        blk_id: the block identifier (either its index in append-only mode or its nonce in full-r/w mode)
+        """
+
+        oldsrc = "%s/%s" % (self._dir, old)
+        newsrc = "%s/%s" % (self._dir, new)
+        olddst = "%s/.%d.old" % (self._tempdir, blk_id)
+        newdst = "%s/%d" % (self._tempdir, blk_id)
+        copyfile(oldsrc, olddst)
+        copyfile(newsrc, newdst)
+        result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
+                           (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
+                            self._profile, self._alg, self._hash, self._tempdir))
+
+        os.remove(olddst)
+        os.remove(newdst)
+        return result
+
     def hash(self):
         """Hash the contents of a directory."""
         return self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s %s" %
@@ -112,23 +135,6 @@ class IShakeAppendOnly(IShakeModes):
                            (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
                             self._profile, self._alg, self._hash, self._tempdir))
         os.remove(dst)
-        return result
-
-    def update(self, old, new, idx):
-        """Update the has according to the changes performed to a given file, respect to its old version."""
-
-        oldsrc = "%s/%s" % (self._dir, old)
-        newsrc = "%s/%s" % (self._dir, new)
-        olddst = "%s/.%02d.old" % (self._tempdir, idx)
-        newdst = "%s/%02d" % (self._tempdir, idx)
-        copyfile(oldsrc, olddst)
-        copyfile(newsrc, newdst)
-        result = self._run("%s --%d --block-size %d --bits %d --quiet --threads %d %s --mode %s --rehash %s %s" %
-                           (self._ishakesumd, self._mode, self._block_size, self._output_bits, self._threads,
-                            self._profile, self._alg, self._hash, self._tempdir))
-
-        os.remove(olddst)
-        os.remove(newdst)
         return result
 
     def hash(self, data=''):
