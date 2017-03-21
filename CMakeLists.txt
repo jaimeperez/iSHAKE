@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(iSHAKE)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -std=gnu99 -fno-builtin-memset")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=gnu99
--fno-builtin-memset")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -pthread -std=gnu99 -fno-builtin-memset")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -pthread -std=gnu99 -fno-builtin-memset")
 
 if (NOT DEFINED KECCAK_TARGET)
     set(KECCAK_TARGET generic64/libkeccak.a)
