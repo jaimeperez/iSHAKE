@@ -11,6 +11,9 @@ addons:
    - gcc-4.8
    - g++-4.8
    - xsltproc
+   - python-pip
+install:
+   - pip install fire
 script:
    - cmake .
    - make VERBOSE=1
