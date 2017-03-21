@@ -15,5 +15,6 @@ script:
    - cmake .
    - make VERBOSE=1
    - tests/test_output.py
+   - tests/test_commands.py
 env:
    global: CXX=g++-4.8
