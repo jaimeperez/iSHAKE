@@ -163,6 +163,17 @@ int ishake_hash(unsigned char *data,
                 uint8_t *hash,
                 uint16_t hashbitlen);
 
+/**
+ * Obtain the hash corresponding to some piece of data, performing the
+ * computation in parallel by threadno threads.
+ *
+ * Define ISHAKE_BLOCK_SIZE if you wish to modify the block size.
+ */
+int ishake_hash_p(unsigned char *data,
+                uint64_t len,
+                uint8_t *hash,
+                uint16_t hashbitlen,
+                uint16_t threadno);
 
 /**
  * Cleanup the resources attached to the passed iSHAKE structure.

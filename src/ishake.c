@@ -25,6 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include "ishake.h"
 #include "utils.h"
@@ -397,10 +398,11 @@ void ishake_cleanup(ishake_t *is) {
 }
 
 
-int ishake_hash(unsigned char *data,
+int ishake_hash_p(unsigned char *data,
                 uint64_t len,
                 uint8_t *hash,
-                uint16_t hashbitlen) {
+                uint16_t hashbitlen,
+                uint16_t threadno) {
 
     if (hashbitlen % 8) return -1;
 
@@ -408,7 +410,7 @@ int ishake_hash(unsigned char *data,
     is = malloc(sizeof(ishake_t));
 
     int rinit = ishake_init(is, (uint32_t) ISHAKE_BLOCK_SIZE, hashbitlen,
-                            ISHAKE_APPEND_ONLY_MODE, 0);
+                            ISHAKE_APPEND_ONLY_MODE, threadno);
     if (rinit) {
         ishake_cleanup(is);
         return -2;
@@ -428,4 +430,12 @@ int ishake_hash(unsigned char *data,
 
     ishake_cleanup(is);
     return 0;
+}
+
+
+int ishake_hash(unsigned char *data,
+                uint64_t len,
+                uint8_t *hash,
+                uint16_t hashbitlen) {
+    return ishake_hash_p(data, len, hash, hashbitlen, 0);
 }
