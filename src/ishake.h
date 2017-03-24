@@ -35,7 +35,10 @@
 #ifndef _ISHAKE_H
 #define _ISHAKE_H
 
-#define ISHAKE_BLOCK_SIZE pow(2, 15)
+#ifndef ISHAKE_BLOCK_SIZE
+#define ISHAKE_BLOCK_SIZE 100*1024 // 100KB by default
+#endif
+
 #define ISHAKE_APPEND_ONLY_MODE 0
 #define ISHAKE_FULL_MODE 1
 
