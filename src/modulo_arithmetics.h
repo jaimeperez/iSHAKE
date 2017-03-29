@@ -6,16 +6,16 @@
 /*
  * Type definition for a function that performs our group operation.
  */
-typedef uint64_t (*group_op)(uint64_t, uint64_t, uint64_t);
+typedef uint_fast64_t (*group_op)(uint_fast64_t, uint_fast64_t);
 
 /*
- * Obtain the addition of a and b modulo m. Overflow safe.
+ * Obtain the addition of a and b modulo 2^64. Overflow ignored.
  */
-uint64_t add_mod(uint64_t a, uint64_t b, uint64_t m);
+uint_fast64_t add_mod64(uint_fast64_t a, uint_fast64_t b);
 
 /*
- * Obtain the subtraction of a and b modulo m. Overflow safe.
+ * Obtain the subtraction of a and b modulo 2^64. Overflow ignored.
  */
-uint64_t sub_mod(uint64_t a, uint64_t b, uint64_t m);
+uint_fast64_t sub_mod64(uint_fast64_t a, uint_fast64_t b);
 
 #endif //ISHAKE_MODULO_ARITHMETICS_H

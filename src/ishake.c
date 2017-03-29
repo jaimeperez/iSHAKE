@@ -239,7 +239,7 @@ int ishake_append(ishake_t *is, unsigned char *data, uint64_t len) {
         block->header.value.idx = is->block_no;
         block->header.length = sizeof(is->block_no);
 
-        _hash_and_combine(is, block, add_mod);
+        _hash_and_combine(is, block, add_mod64);
 
         ptr += is->block_size;
         is->proc_bytes += is->block_size;
@@ -288,7 +288,7 @@ int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new) {
     }
 
     // add the new block
-    _hash_and_combine(is, new, add_mod);
+    _hash_and_combine(is, new, add_mod64);
 
     return 0;
 }
@@ -320,7 +320,7 @@ int ishake_delete(ishake_t *is, ishake_block_t *previous,
     }
 
     // delete the block
-    _hash_and_combine(is, deleted, sub_mod);
+    _hash_and_combine(is, deleted, sub_mod64);
 
     return 0;
 }
@@ -331,8 +331,8 @@ int ishake_update(ishake_t *is, ishake_block_t *old, ishake_block_t *new) {
         return -1;
     }
 
-    _hash_and_combine(is, old, sub_mod);
-    _hash_and_combine(is, new, add_mod);
+    _hash_and_combine(is, old, sub_mod64);
+    _hash_and_combine(is, new, add_mod64);
 
     return 0;
 }
@@ -362,7 +362,7 @@ int ishake_final(ishake_t *is, uint8_t *output) {
         block->header.value.idx = is->block_no;
         block->header.length = sizeof(is->block_no);
 
-        _hash_and_combine(is, block, add_mod);
+        _hash_and_combine(is, block, add_mod64);
 
         is->proc_bytes += is->remaining;
         is->remaining = 0;

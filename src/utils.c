@@ -34,9 +34,9 @@
 
 #define IS_BIG_ENDIAN (!*(unsigned char *)&(uint16_t){1})
 
-void combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
+void combine(uint_fast64_t *out, uint_fast64_t *in, uint16_t len, group_op op) {
     for (int i = 0; i < len; i++) {
-        out[i] = op(out[i], in[i], UINT64_MAX);
+        out[i] = op(out[i], in[i]);
     }
 }
 
@@ -58,20 +58,20 @@ void hex2bin(char **output, uint8_t *data, unsigned long len) {
     }
 }
 
-void uint8_t2uint64_t(uint64_t *output, uint8_t *data, unsigned long len) {
+void uint8_t2uint64_t(uint_fast64_t *output, uint8_t *data, unsigned long len) {
     for (int i = 0; i < len / 8; i++) {
-        output[i] = ((uint64_t) data[8 * i]     << 56) +
-                    ((uint64_t) data[8 * i + 1] << 48) +
-                    ((uint64_t) data[8 * i + 2] << 40) +
-                    ((uint64_t) data[8 * i + 3] << 32) +
-                    ((uint64_t) data[8 * i + 4] << 24) +
-                    ((uint64_t) data[8 * i + 5] << 16) +
-                    ((uint64_t) data[8 * i + 6] << 8)  +
-                    ((uint64_t) data[8 * i + 7]);
+        output[i] = ((uint_fast64_t) data[8 * i]     << 56) +
+                    ((uint_fast64_t) data[8 * i + 1] << 48) +
+                    ((uint_fast64_t) data[8 * i + 2] << 40) +
+                    ((uint_fast64_t) data[8 * i + 3] << 32) +
+                    ((uint_fast64_t) data[8 * i + 4] << 24) +
+                    ((uint_fast64_t) data[8 * i + 5] << 16) +
+                    ((uint_fast64_t) data[8 * i + 6] << 8)  +
+                    ((uint_fast64_t) data[8 * i + 7]);
     }
 }
 
-void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len) {
+void uint64_t2uint8_t(uint8_t *output, uint_fast64_t *data, unsigned long len) {
     for (int i = 0; i < len; i++) {
         output[8 * i + 7] = (uint8_t) data[i];
         output[8 * i + 6] = (uint8_t) (data[i] >> 8);
@@ -84,7 +84,7 @@ void uint64_t2uint8_t(uint8_t *output, uint64_t *data, unsigned long len) {
     }
 }
 
-uint64_t swap_uint64(uint64_t val)
+uint64_t swap_uint64(uint_fast64_t val)
 {
     if (IS_BIG_ENDIAN) {
         return val;
@@ -105,7 +105,7 @@ void resolve_file_path(char **path, char *dirname, char *filename) {
     *path = p;
 }
 
-uint64_t str2uint64_t(char *str, int base) {
+uint_fast64_t str2uint64_t(char *str, int base) {
     char *ptr;
     return strtoull(str, &ptr, base);
 }

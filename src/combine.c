@@ -41,21 +41,22 @@ void panic(char *program, char *format, int argc, ...) {
 /*
  * Combine a and b using a group operation op, and store the result in a.
  */
-void _combine(uint64_t *out, uint64_t *in, uint16_t len, group_op op) {
+void _combine(uint_fast64_t *out, uint_fast64_t *in, uint16_t len, group_op op)
+{
     for (int i = 0; i < len; i++) {
-        out[i] = op(out[i], in[i], UINT64_MAX);
+        out[i] = op(out[i], in[i]);
     }
 }
 
 int main(int argc, char **argv) {
-    group_op op = add_mod;
+    group_op op = add_mod64;
     char *hash1 = NULL;
     char *hash2 = NULL;
 
     // parse arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp("--sub", argv[i]) == 0) {
-            op = sub_mod;
+            op = sub_mod64;
         } else if (strcmp("--help", argv[i]) == 0) {
             usage(argv[0]);
         } else {
