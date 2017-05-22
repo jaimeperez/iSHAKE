@@ -16,7 +16,7 @@ from ishakelib import IShakeFulLRW
 import setup_dir
 
 
-def test_commands(tmpdir, threads, block_size=10, total_blocks=100):
+def test_commands(tmpdir, threads, block_size=26, total_blocks=100):
     ishake = IShakeFulLRW(dir=tmpdir, profile=True, threads=threads, block_size=block_size)
     results = {}
     results['main'] = ishake.hash()
@@ -56,7 +56,7 @@ def test_commands(tmpdir, threads, block_size=10, total_blocks=100):
     return results
 
 
-def main(dirname=None, repetitions=1, block_size=10, total_blocks=100, threads=0, debug=False):
+def main(dirname=None, repetitions=1, block_size=26, total_blocks=100, threads=0, debug=False):
     if not debug:
         sys.tracebacklimit = 0
     if not block_size > 0:
@@ -70,7 +70,7 @@ def main(dirname=None, repetitions=1, block_size=10, total_blocks=100, threads=0
             tempfile.gettempdir(),
             ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
         )
-        setup_dir.setup(dirname, block_size, block_size * total_blocks)
+        setup_dir.setup(dirname, block_size - 16, (block_size - 16) * total_blocks)
         clean = True
 
     # initialize time recording
