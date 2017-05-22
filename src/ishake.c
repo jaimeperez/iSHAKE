@@ -45,12 +45,12 @@ int _hash_block(
         h.value.nonce.next = swap_uint64(h.value.nonce.next);
     }
     uint8_t *data = NULL;
-    data = malloc((block->block_size + h.length) * sizeof(uint8_t));
+    data = malloc((block->data_len + h.length) * sizeof(uint8_t));
     if (data == NULL) {
         return -1;
     }
-    memcpy(data, block->data, block->block_size);
-    memcpy(data + block->block_size, &h.value, h.length);
+    memcpy(data, block->data, block->data_len);
+    memcpy(data + block->data_len, &h.value, h.length);
 
     uint8_t *buf;
     buf = calloc((unsigned int)is->output_len / 8, sizeof(uint8_t));
@@ -62,7 +62,7 @@ int _hash_block(
         Keccak_HashInitialize_SHAKE256(&keccak);
     }
     keccak.fixedOutputLength = is->output_len;
-    Keccak_HashUpdate(&keccak, data, (block->block_size + h.length) * 8);
+    Keccak_HashUpdate(&keccak, data, (block->data_len + h.length) * 8);
     Keccak_HashFinal(&keccak, buf);
     free(data);
 
@@ -230,20 +230,20 @@ int ishake_append(ishake_t *is, unsigned char *data, uint64_t len) {
 
     // iterate over data, processing as many blocks as possible
     unsigned char *ptr = input;
-    while (len >= is->block_size) {
+    while (len >= (is->block_size - sizeof(uint64_t))) {
         is->block_no++;
         ishake_block_t *block = malloc(sizeof(ishake_block_t));
-        block->data = calloc(len, sizeof(unsigned char));
-        memcpy(block->data, ptr, len);
-        block->block_size = is->block_size;
         block->header.value.idx = is->block_no;
         block->header.length = sizeof(is->block_no);
+        block->data_len = is->block_size - sizeof(uint64_t);
+        block->data = calloc(block->data_len, sizeof(unsigned char));
+        memcpy(block->data, ptr, block->data_len);
 
         _hash_and_combine(is, block, add_mod64);
 
-        ptr += is->block_size;
-        is->proc_bytes += is->block_size;
-        len -= is->block_size;
+        ptr += block->data_len;
+        is->proc_bytes += block->data_len;
+        len -= block->data_len;
     }
 
     // store remaining data
@@ -251,7 +251,7 @@ int ishake_append(ishake_t *is, unsigned char *data, uint64_t len) {
     if (is->remaining) {
         is->buf = calloc(is->remaining, sizeof(unsigned char));
         if (is->buf == NULL) return -1;
-        memcpy(is->buf, ptr, len);
+        memcpy(is->buf, ptr, is->remaining);
     }
     free(input);
 
@@ -276,12 +276,12 @@ int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new) {
 
         // clone the block to change the "next" pointer
         ishake_block_t *new_prev = calloc(1, sizeof(ishake_block_t));
-        new_prev->block_size = previous->block_size;
+        new_prev->data_len = previous->data_len;
         new_prev->header.length = previous->header.length;
         new_prev->header.value.nonce.nonce = previous->header.value.nonce.nonce;
         new_prev->header.value.nonce.next = new->header.value.nonce.nonce;
-        new_prev->data = calloc(previous->block_size, sizeof(unsigned char));
-        memcpy(new_prev->data, previous->data, previous->block_size);
+        new_prev->data = calloc(previous->data_len, sizeof(unsigned char));
+        memcpy(new_prev->data, previous->data, previous->data_len);
 
         // rehash the previous block with "next" pointing to new block
         ishake_update(is, previous, new_prev);
@@ -307,12 +307,12 @@ int ishake_delete(ishake_t *is, ishake_block_t *previous,
 
         // clone the block to change the "next" pointer
         ishake_block_t *new = calloc(1, sizeof(ishake_block_t));
-        new->block_size = previous->block_size;
+        new->data_len = previous->data_len;
         new->header.length = previous->header.length;
         new->header.value.nonce.nonce = previous->header.value.nonce.nonce;
         new->header.value.nonce.next = deleted->header.value.nonce.next;
-        new->data = calloc(previous->block_size, sizeof(unsigned char));
-        memcpy(new->data, previous->data, previous->block_size);
+        new->data = calloc(previous->data_len, sizeof(unsigned char));
+        memcpy(new->data, previous->data, previous->data_len);
 
         // "remove" the previous block, and add it back with the new "next"
         // pointer
@@ -358,7 +358,7 @@ int ishake_final(ishake_t *is, uint8_t *output) {
         block->data = is->buf;
         block->data = calloc(is->remaining, sizeof(unsigned char));
         memcpy(block->data, is->buf, is->remaining);
-        block->block_size = is->remaining;
+        block->data_len = is->remaining;
         block->header.value.idx = is->block_no;
         block->header.length = sizeof(is->block_no);
 

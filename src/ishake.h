@@ -72,7 +72,7 @@ typedef struct {
  */
 typedef struct {
     unsigned char *data;
-    uint32_t block_size;
+    uint32_t data_len;
     ishake_header header;
 } ishake_block_t;
 

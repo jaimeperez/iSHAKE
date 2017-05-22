@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
     uint8_t *bo;
     char *ho;
     uint32_t block_size = BLOCK_SIZE;
+    uint32_t datalen;
 
     int shake = 0, blocks = 0, hex_input = 0, quiet = 0, thrno = 0, profile = 0;
     unsigned long bits = 0;
@@ -134,7 +135,8 @@ int main(int argc, char *argv[]) {
      * hex_input == 1 and therefore the input block size will double. If not,
      * hex_input == 0 and the input will have the same size as hash blocks.
      */
-    uint32_t input_block_size = block_size + (block_size * hex_input);
+    datalen = block_size - 8;
+    datalen = datalen + (datalen * hex_input);
 
     // open appropriate input source
     if (strlen(filename) == 0) {
@@ -198,12 +200,12 @@ int main(int argc, char *argv[]) {
     }
 
     // read input and process it on the go
-    buf = malloc(input_block_size);
+    buf = malloc(datalen);
     unsigned long b_read;
 
     do {
         blocks++;
-        b_read = fread(buf, 1, input_block_size, fp);
+        b_read = fread(buf, 1, datalen, fp);
         if (hex_input) {
             uint8_t *raw_data;
             hex2bin((char **)&raw_data, buf, b_read);
@@ -216,7 +218,7 @@ int main(int argc, char *argv[]) {
                 panic(argv[0], "iSHAKE failed to process data.", 0);
             }
         }
-    } while (b_read == (unsigned long) input_block_size);
+    } while (b_read == datalen);
 
     // finish computations and get the hash
     bo = malloc(bits / 8);

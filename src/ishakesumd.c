@@ -87,6 +87,8 @@ int main(int argc, char **argv) {
     uint8_t mode = ISHAKE_APPEND_ONLY_MODE;
     uint32_t filesno = 0;
     uint32_t block_size = BLOCK_SIZE;
+    uint32_t datalen;
+    uint8_t headerlen = 8;
 
     // parse arguments
     for (int i = 1; i < argc; i++) {
@@ -103,6 +105,7 @@ int main(int argc, char **argv) {
             }
             if (strcmp("FULL", argv[i + 1]) == 0) {
                 mode = ISHAKE_FULL_MODE;
+                headerlen = 16;
             }
             i++; // two arguments consumed, advance the pointer!
         } else if (strcmp("--bits", argv[i]) == 0) {
@@ -169,6 +172,9 @@ int main(int argc, char **argv) {
             dirname = argv[i];
         }
     }
+
+    // set the max amount of data per block
+    datalen = block_size - headerlen;
 
     // validate output bits and algorithm version
     switch (shake) {
@@ -301,15 +307,15 @@ int main(int argc, char **argv) {
 
                         // recreate previous block
                         ishake_block_t *prev_b = malloc(sizeof(ishake_block_t));
-                        prev_b->block_size = block_size;
-                        prev_b->header.length = 16;
+                        prev_b->data_len = datalen;
+                        prev_b->header.length = headerlen;
                         prev_b->header.value.nonce.nonce = prev_n;
                         prev_b->header.value.nonce.next = del_n;
 
                         // read its contents
                         FILE *prev_fd = fopen(prevfile, "r");
-                        prev_b->data = malloc(block_size);
-                        fread(prev_b->data, 1, block_size, prev_fd);
+                        prev_b->data = malloc(datalen);
+                        fread(prev_b->data, 1, datalen, prev_fd);
                         fclose(prev_fd);
                         prev_ptr = prev_b;
                         free(prevfile);
@@ -317,15 +323,15 @@ int main(int argc, char **argv) {
 
                     // recreate deleted block
                     ishake_block_t *del_b = malloc(sizeof(ishake_block_t));
-                    del_b->block_size = block_size;
-                    del_b->header.length = 16;
+                    del_b->data_len = datalen;
+                    del_b->header.length = headerlen;
                     del_b->header.value.nonce.nonce = del_n;
                     del_b->header.value.nonce.next = next_n;
 
                     // read its contents
                     FILE *del_fd = fopen(delfile, "r");
-                    del_b->data = malloc(block_size);
-                    fread(del_b->data, 1, block_size, del_fd);
+                    del_b->data = malloc(datalen);
+                    fread(del_b->data, 1, datalen, del_fd);
                     fclose(del_fd);
 
                     ishake_delete(is, prev_ptr, del_b);
@@ -388,15 +394,15 @@ int main(int argc, char **argv) {
 
                         // modify previous block
                         ishake_block_t *prev_b = malloc(sizeof(ishake_block_t));
-                        prev_b->block_size = block_size;
-                        prev_b->header.length = 16;
+                        prev_b->data_len = datalen;
+                        prev_b->header.length = headerlen;
                         prev_b->header.value.nonce.nonce = prev_n;
                         prev_b->header.value.nonce.next  = next_n;
 
                         // read its contents
                         FILE *prev_fd = fopen(prevfile, "r");
-                        prev_b->data = malloc(block_size);
-                        fread(prev_b->data, 1, block_size, prev_fd);
+                        prev_b->data = malloc(datalen);
+                        fread(prev_b->data, 1, datalen, prev_fd);
                         fclose(prev_fd);
                         prev_ptr = prev_b;
                         free(prevfile);
@@ -404,15 +410,15 @@ int main(int argc, char **argv) {
 
                     // build new block
                     ishake_block_t *new_b = malloc(sizeof(ishake_block_t));
-                    new_b->block_size = block_size;
-                    new_b->header.length = 16;
+                    new_b->data_len = datalen;
+                    new_b->header.length = headerlen;
                     new_b->header.value.nonce.nonce = new_n;
                     new_b->header.value.nonce.next = next_n;
 
                     // read its contents
                     FILE *new_fd = fopen(newfile, "r");
-                    new_b->data = malloc(block_size);
-                    fread(new_b->data, 1, block_size, new_fd);
+                    new_b->data = malloc(datalen);
+                    fread(new_b->data, 1, datalen, new_fd);
                     fclose(new_fd);
 
                     ishake_insert(is, prev_ptr, new_b);
@@ -462,7 +468,7 @@ int main(int argc, char **argv) {
                 // initialize old block
                 ishake_block_t *oldblock = malloc(sizeof(ishake_block_t));
                 uint64_t next = 0;
-                oldblock->block_size = 0;
+                oldblock->data_len = 0;
                 oldblock->data = NULL;
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
                     oldblock->header.length = 8;
@@ -481,17 +487,17 @@ int main(int argc, char **argv) {
                 i = 0;
                 do {
                     oldblock->data = realloc(oldblock->data,
-                                            block_size + block_size * i);
-                    b_read = fread(oldblock->data + block_size * i, 1,
-                                   block_size, oldfp);
-                    oldblock->block_size += b_read;
+                                             datalen + datalen * i);
+                    b_read = fread(oldblock->data + datalen * i, 1,
+                                   datalen, oldfp);
+                    oldblock->data_len += b_read;
                     i++;
-                } while (b_read == (unsigned long)block_size);
+                } while (b_read == datalen);
                 fclose(oldfp);
 
                 // initialize new block
                 ishake_block_t *newblock = malloc(sizeof(ishake_block_t));
-                newblock->block_size = 0;
+                newblock->data_len = 0;
                 newblock->data = NULL;
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
                     newblock->header.length = 8;
@@ -507,12 +513,12 @@ int main(int argc, char **argv) {
                 i = 0;
                 do {
                     newblock->data = realloc(newblock->data,
-                                            block_size + block_size * i);
-                    b_read = fread(newblock->data + block_size * i, 1,
-                                   block_size, newfp);
-                    newblock->block_size += b_read;
+                                            datalen + datalen * i);
+                    b_read = fread(newblock->data + datalen * i, 1,
+                                   datalen, newfp);
+                    newblock->data_len += b_read;
                     i++;
-                } while (b_read == (unsigned long)block_size);
+                } while (b_read == datalen);
                 fclose(newfp);
 
                 if (ishake_update(is, oldblock, newblock)) {
@@ -546,8 +552,8 @@ int main(int argc, char **argv) {
 
                 // read the contents of the new file
                 FILE *newfp = fopen(new, "r");
-                buf = malloc(block_size);
-                b_read = fread(buf, 1, block_size, newfp);
+                buf = malloc(datalen);
+                b_read = fread(buf, 1, datalen, newfp);
                 if (ishake_append(is, buf, b_read)) {
                     panic(argv[0], "iSHAKE failed to process data.", 0);
                 }
@@ -588,8 +594,8 @@ int main(int argc, char **argv) {
 
         do {
             blocks++;
-            buf = malloc(block_size);
-            b_read = fread(buf, 1, block_size, fp);
+            buf = malloc(datalen);
+            b_read = fread(buf, 1, datalen, fp);
             if (b_read == 0) {
                 // the file size is a multiple of the block size, we are done
                 break;
@@ -598,7 +604,7 @@ int main(int argc, char **argv) {
             if (ishake_append(is, buf, b_read)) {
                 panic(argv[0], "iSHAKE failed to process data.", 0);
             }
-        } while (b_read == (unsigned long) block_size);
+        } while (b_read == datalen);
 
         free(buf);
         fclose(fp);
@@ -627,9 +633,9 @@ int main(int argc, char **argv) {
 
             // in FULL R&W mode, files size must be less or equal to block size
             ishake_block_t *block = malloc(sizeof(ishake_block_t));
-            block->data = malloc(block_size);
-            b_read = fread(block->data, 1, block_size, fp);
-            block->block_size = (uint32_t) b_read;
+            block->data = malloc(datalen);
+            b_read = fread(block->data, 1, datalen, fp);
+            block->data_len = (uint32_t) b_read;
             block->header.length = 16;
             block->header.value.nonce.next = next;
             block->header.value.nonce.nonce = nonce;
