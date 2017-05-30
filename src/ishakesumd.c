@@ -71,8 +71,9 @@ int main(int argc, char **argv) {
     DIR *dfd;
 
     char *ho;
-    char **files = NULL;
     char *dirname = "", *oldhash = NULL;
+
+    uint64_t prev_nonce_f = 0;
 
     // file extensions with special meaning, should always be '.' + 3 bytes
     char *delext = ".del";
@@ -85,7 +86,6 @@ int main(int argc, char **argv) {
     uint8_t *buf;
     uint8_t *bo;
     uint8_t mode = ISHAKE_APPEND_ONLY_MODE;
-    uint32_t filesno = 0;
     uint32_t block_size = BLOCK_SIZE;
     uint32_t datalen;
     uint8_t headerlen = 8;
@@ -292,33 +292,33 @@ int main(int argc, char **argv) {
                         panic(argv[0], "cannot read file '%s'.", 1, delfile);
                     }
 
-                    // see if we have a previous block and build it
-                    ishake_block_t *prev_ptr = NULL;
-                    if (prev_n) {
-                        // get the file name of the previous block
-                        char *prevfile;
-                        resolve_file_path(&prevfile, dirname, prevnonce);
+                    // see if we have a next block and build it
+                    ishake_block_t *next_ptr = NULL;
+                    if (next_n) {
+                        // get the file name of the next block
+                        char *nextfile;
+                        resolve_file_path(&nextfile, dirname, nextnonce);
 
                         // now check previous file
-                        if (access(prevfile, R_OK) == -1) {
+                        if (access(nextfile, R_OK) == -1) {
                             panic(argv[0], "cannot read file '%s'.", 1,
-                                  prevfile);
+                                  nextfile);
                         }
 
-                        // recreate previous block
-                        ishake_block_t *prev_b = malloc(sizeof(ishake_block_t));
-                        prev_b->data_len = datalen;
-                        prev_b->header.length = headerlen;
-                        prev_b->header.value.nonce.nonce = prev_n;
-                        prev_b->header.value.nonce.next = del_n;
+                        // recreate the next block
+                        ishake_block_t *next_b = malloc(sizeof(ishake_block_t));
+                        next_b->data_len = datalen;
+                        next_b->header.length = headerlen;
+                        next_b->header.value.nonce.nonce = prev_n;
+                        next_b->header.value.nonce.prev = del_n;
 
                         // read its contents
-                        FILE *prev_fd = fopen(prevfile, "r");
-                        prev_b->data = malloc(datalen);
-                        fread(prev_b->data, 1, datalen, prev_fd);
-                        fclose(prev_fd);
-                        prev_ptr = prev_b;
-                        free(prevfile);
+                        FILE *next_fd = fopen(nextfile, "r");
+                        next_b->data = malloc(datalen);
+                        fread(next_b->data, 1, datalen, next_fd);
+                        fclose(next_fd);
+                        next_ptr = next_b;
+                        free(nextfile);
                     }
 
                     // recreate deleted block
@@ -326,7 +326,7 @@ int main(int argc, char **argv) {
                     del_b->data_len = datalen;
                     del_b->header.length = headerlen;
                     del_b->header.value.nonce.nonce = del_n;
-                    del_b->header.value.nonce.next = next_n;
+                    del_b->header.value.nonce.prev = prev_n;
 
                     // read its contents
                     FILE *del_fd = fopen(delfile, "r");
@@ -334,7 +334,7 @@ int main(int argc, char **argv) {
                     fread(del_b->data, 1, datalen, del_fd);
                     fclose(del_fd);
 
-                    ishake_delete(is, prev_ptr, del_b);
+                    ishake_delete(is, del_b, next_ptr);
 
                     free(prevnonce);
                     free(delnonce);
@@ -379,33 +379,33 @@ int main(int argc, char **argv) {
                         panic(argv[0], "cannot read file '%s'.", 1, newfile);
                     }
 
-                    // see if we have a previous block and build it
-                    ishake_block_t *prev_ptr = NULL;
-                    if (prev_n) {
-                        // get the file name of the previous block
-                        char *prevfile;
-                        resolve_file_path(&prevfile, dirname, prevnonce);
+                    // see if we have a next block and build it
+                    ishake_block_t *next_ptr = NULL;
+                    if (next_n) {
+                        // get the file name of the next block
+                        char *nextfile;
+                        resolve_file_path(&nextfile, dirname, nextnonce);
 
-                        //  now check previous file
-                        if (access(prevfile, R_OK) == -1) {
+                        //  now check next file
+                        if (access(nextfile, R_OK) == -1) {
                             panic(argv[0], "cannot read file '%s'.", 1,
-                                  prevfile);
+                                  nextfile);
                         }
 
-                        // modify previous block
-                        ishake_block_t *prev_b = malloc(sizeof(ishake_block_t));
-                        prev_b->data_len = datalen;
-                        prev_b->header.length = headerlen;
-                        prev_b->header.value.nonce.nonce = prev_n;
-                        prev_b->header.value.nonce.next  = next_n;
+                        // modify next block
+                        ishake_block_t *next_b = malloc(sizeof(ishake_block_t));
+                        next_b->data_len = datalen;
+                        next_b->header.length = headerlen;
+                        next_b->header.value.nonce.nonce = next_n;
+                        next_b->header.value.nonce.prev  = new_n;
 
                         // read its contents
-                        FILE *prev_fd = fopen(prevfile, "r");
-                        prev_b->data = malloc(datalen);
-                        fread(prev_b->data, 1, datalen, prev_fd);
-                        fclose(prev_fd);
-                        prev_ptr = prev_b;
-                        free(prevfile);
+                        FILE *next_fd = fopen(nextfile, "r");
+                        next_b->data = malloc(datalen);
+                        fread(next_b->data, 1, datalen, next_fd);
+                        fclose(next_fd);
+                        next_ptr = next_b;
+                        free(nextfile);
                     }
 
                     // build new block
@@ -413,7 +413,7 @@ int main(int argc, char **argv) {
                     new_b->data_len = datalen;
                     new_b->header.length = headerlen;
                     new_b->header.value.nonce.nonce = new_n;
-                    new_b->header.value.nonce.next = next_n;
+                    new_b->header.value.nonce.prev = prev_n;
 
                     // read its contents
                     FILE *new_fd = fopen(newfile, "r");
@@ -421,7 +421,7 @@ int main(int argc, char **argv) {
                     fread(new_b->data, 1, datalen, new_fd);
                     fclose(new_fd);
 
-                    ishake_insert(is, prev_ptr, new_b);
+                    ishake_insert(is, new_b, next_ptr);
 
                     free(nextnonce);
                     free(newnonce);
@@ -467,7 +467,7 @@ int main(int argc, char **argv) {
 
                 // initialize old block
                 ishake_block_t *oldblock = malloc(sizeof(ishake_block_t));
-                uint64_t next = 0;
+                uint64_t prev = 0;
                 oldblock->data_len = 0;
                 oldblock->data = NULL;
                 if (mode == ISHAKE_APPEND_ONLY_MODE) {
@@ -475,11 +475,10 @@ int main(int argc, char **argv) {
                     oldblock->header.value.idx = idx;
                 } else { // FULL R&W, we need the next block
                     // parse the name of the file again
-                    char *sep = strchr(dp->d_name + 1, '.');
-                    next = str2uint64_t(sep + 1, 10);
+                    prev = str2uint64_t(dp->d_name + 1, 10);
                     oldblock->header.length = 16;
                     oldblock->header.value.nonce.nonce = idx;
-                    oldblock->header.value.nonce.next = next;
+                    oldblock->header.value.nonce.prev = prev;
                 }
 
                 // read the contents of the old file
@@ -505,7 +504,7 @@ int main(int argc, char **argv) {
                 } else { // FULL R&W, we need the next block
                     newblock->header.length = 16;
                     newblock->header.value.nonce.nonce = idx;
-                    newblock->header.value.nonce.next = next;
+                    newblock->header.value.nonce.prev = prev;
                 }
 
                 // read the contents of the new block
@@ -568,20 +567,52 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        if (mode == ISHAKE_FULL_MODE) {
-            // save the file name to insert it in reverse order afterwards
-            files = realloc(files, sizeof(char*) * (filesno + 1));
+        // regular hash, no dot file
+
+        if (mode == ISHAKE_FULL_MODE) { // full mode, new block, append it
             size_t namlen = strlen(dp->d_name);
             char *filename = malloc(namlen + 1);
             strncpy(filename, dp->d_name, namlen + 1);
-            files[filesno] = filename;
-            filesno++;
 
-            // we're done with this file, will process later
+            resolve_file_path(&file, dirname, filename);
+
+            if (access(file, R_OK) == -1) {
+                panic(argv[0], "cannot read file '%s'.", 1, file);
+            }
+
+            // parse the name of the file into the nonce of the block
+            uint64_t nonce = str2uint64_t(filename, 10);
+
+            // read file and process it on the go
+            FILE *fp = fopen(file, "r");
+            size_t b_read;
+
+            // in FULL R&W mode, files size must be less or equal to block size
+            ishake_block_t *block = malloc(sizeof(ishake_block_t));
+            block->data = malloc(datalen);
+            b_read = fread(block->data, 1, datalen, fp);
+            block->data_len = (uint32_t) b_read;
+            block->header.length = 16;
+            block->header.value.nonce.prev = prev_nonce_f;
+            block->header.value.nonce.nonce = nonce;
+
+            // insert here
+            ishake_insert(is, block, NULL);
+
+            // record the last block processed to set the "prev" pointer of the
+            // next block appended, if any
+            prev_nonce_f = nonce;
+
+            fclose(fp);
+            free(file);
+            free(filename);
+
+            // we're done with this file
             continue;
         }
 
-        // regular hash, no dot file
+        // append-only mode
+
         resolve_file_path(&file, dirname, dp->d_name);
 
         if (access(file, R_OK) == -1) {
@@ -609,49 +640,6 @@ int main(int argc, char **argv) {
         free(buf);
         fclose(fp);
         free(file);
-    }
-
-    if (mode == ISHAKE_FULL_MODE && !rehash) {
-        int64_t i = filesno - 1;
-        char *file;
-        uint64_t next = 0;
-
-        // iterate over the list of files in reverse order
-        while (i >= 0) {
-            resolve_file_path(&file, dirname, files[i]);
-
-            if (access(file, R_OK) == -1) {
-                panic(argv[0], "cannot read file '%s'.", 1, file);
-            }
-
-            // parse the name of the file into the nonce of the block
-            uint64_t nonce = str2uint64_t(files[i], 10);
-
-            // read file and process it on the go
-            FILE *fp = fopen(file, "r");
-            size_t b_read;
-
-            // in FULL R&W mode, files size must be less or equal to block size
-            ishake_block_t *block = malloc(sizeof(ishake_block_t));
-            block->data = malloc(datalen);
-            b_read = fread(block->data, 1, datalen, fp);
-            block->data_len = (uint32_t) b_read;
-            block->header.length = 16;
-            block->header.value.nonce.next = next;
-            block->header.value.nonce.nonce = nonce;
-
-            // insert here
-            ishake_insert(is, NULL, block);
-
-            // record the last block processed to set the "next" pointer
-            next = nonce;
-
-            fclose(fp);
-            free(file);
-            free(files[i]);
-            i--;
-        }
-        free(files);
     }
 
     // finish computations and get the hash

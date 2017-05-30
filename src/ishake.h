@@ -53,7 +53,7 @@ typedef int (*hash_function)(uint8_t*, size_t, const uint8_t*, size_t);
  */
 typedef struct {
     uint64_t nonce;
-    uint64_t next;
+    uint64_t prev;
 } ishake_nonce;
 
 /**
@@ -128,22 +128,21 @@ int ishake_init(ishake_t *is,
 int ishake_append(ishake_t *is, unsigned char *data, uint64_t len);
 
 /**
- * Insert a new block right after another, previous block. Its size MUST be
- * exactly the same as the block size, and the next pointer in the block must
- * point to the next block in the list.
+ * Insert a new block right before another. Its size MUST be exactly
+ * the same as the block size, and the prev pointer in the block
+ * must point to the previous block in the list.
  *
- * Pass NULL as previous when inserting the first block.
+ * Pass NULL as next when inserting the last block.
  */
-int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new);
+int ishake_insert(ishake_t *is, ishake_block_t *new, ishake_block_t *next);
 
 /**
- * Delete a block, updating the previous block to point to the one next to the
- * block we are deleting.
+ * Delete a block, updating the next block in the list to point to the
+ * block previous to the one we are deleting.
  *
- * Pass NULL as previous when deleting the first block.
+ * Pass NULL as next when deleting the last block.
  */
-int ishake_delete(ishake_t *is, ishake_block_t *previous, ishake_block_t
-*deleted);
+int ishake_delete(ishake_t *is, ishake_block_t *deleted, ishake_block_t *next);
 
 /**
  * Update a block with new data. Old data must be provided too.

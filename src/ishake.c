@@ -42,7 +42,7 @@ int _hash_block(
         h.value.idx = swap_uint64(h.value.idx);
     } else { // we have a nonce and a pointer to the next block
         h.value.nonce.nonce = swap_uint64(h.value.nonce.nonce);
-        h.value.nonce.next = swap_uint64(h.value.nonce.next);
+        h.value.nonce.prev = swap_uint64(h.value.nonce.prev);
     }
     uint8_t *data = NULL;
     data = malloc((block->data_len + h.length) * sizeof(uint8_t));
@@ -259,7 +259,7 @@ int ishake_append(ishake_t *is, unsigned char *data, uint64_t len) {
 }
 
 
-int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new) {
+int ishake_insert(ishake_t *is, ishake_block_t *new, ishake_block_t *next) {
     if (is == NULL) {
         return -1;
     }
@@ -269,22 +269,22 @@ int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new) {
         return -1;
     }
 
-    if (previous != NULL) {
-        if (previous->header.length != 16) {
+    if (next != NULL) {
+        if (next->header.length != 16) {
             return -1;
         }
 
         // clone the block to change the "next" pointer
-        ishake_block_t *new_prev = calloc(1, sizeof(ishake_block_t));
-        new_prev->data_len = previous->data_len;
-        new_prev->header.length = previous->header.length;
-        new_prev->header.value.nonce.nonce = previous->header.value.nonce.nonce;
-        new_prev->header.value.nonce.next = new->header.value.nonce.nonce;
-        new_prev->data = calloc(previous->data_len, sizeof(unsigned char));
-        memcpy(new_prev->data, previous->data, previous->data_len);
+        ishake_block_t *new_next = calloc(1, sizeof(ishake_block_t));
+        new_next->data_len = next->data_len;
+        new_next->header.length = next->header.length;
+        new_next->header.value.nonce.nonce = next->header.value.nonce.nonce;
+        new_next->header.value.nonce.prev  = new->header.value.nonce.nonce;
+        new_next->data = calloc(next->data_len, sizeof(unsigned char));
+        memcpy(new_next->data, next->data, next->data_len);
 
         // rehash the previous block with "next" pointing to new block
-        ishake_update(is, previous, new_prev);
+        ishake_update(is, next, new_next);
     }
 
     // add the new block
@@ -294,29 +294,28 @@ int ishake_insert(ishake_t *is, ishake_block_t *previous, ishake_block_t *new) {
 }
 
 
-int ishake_delete(ishake_t *is, ishake_block_t *previous,
-                  ishake_block_t *deleted) {
+int ishake_delete(ishake_t *is, ishake_block_t *deleted, ishake_block_t *next) {
     if (is == NULL) {
         return -1;
     }
 
-    if (previous != NULL) {
-        if ((*previous).header.length != 16) {
+    if (next != NULL) {
+        if ((*next).header.length != 16) {
             return -1;
         }
 
         // clone the block to change the "next" pointer
-        ishake_block_t *new = calloc(1, sizeof(ishake_block_t));
-        new->data_len = previous->data_len;
-        new->header.length = previous->header.length;
-        new->header.value.nonce.nonce = previous->header.value.nonce.nonce;
-        new->header.value.nonce.next = deleted->header.value.nonce.next;
-        new->data = calloc(previous->data_len, sizeof(unsigned char));
-        memcpy(new->data, previous->data, previous->data_len);
+        ishake_block_t *new_next = calloc(1, sizeof(ishake_block_t));
+        new_next->data_len = next->data_len;
+        new_next->header.length = next->header.length;
+        new_next->header.value.nonce.nonce = next->header.value.nonce.nonce;
+        new_next->header.value.nonce.prev = deleted->header.value.nonce.prev;
+        new_next->data = calloc(next->data_len, sizeof(unsigned char));
+        memcpy(new_next->data, next->data, next->data_len);
 
         // "remove" the previous block, and add it back with the new "next"
         // pointer
-        ishake_update(is, previous, new);
+        ishake_update(is, next, new_next);
     }
 
     // delete the block
