@@ -5,10 +5,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -pthread -std=gnu99 -fno-builtin-mems
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -pthread -std=gnu99 -fno-builtin-memset")
 
 if (NOT DEFINED KECCAK_TARGET)
-    set(KECCAK_TARGET generic64/libkeccak.a)
+    set(KECCAK_TARGET generic64/libXKCP.a)
 endif()
 
-include_directories(includes/libkeccak.a.headers)
+include_directories(includes/libXKCP.a.headers)
 cmake_policy(SET CMP0015 NEW)
 link_directories(lib)
 
@@ -28,10 +28,10 @@ add_executable(ishakesum ${ISHAKESUM_FILES})
 add_executable(ishakesumd ${ISHAKESUMD_FILES})
 add_executable(combine ${COMBINE_FILES})
 
-target_link_libraries(sha3sum libkeccak.a)
-target_link_libraries(sha3sumd libkeccak.a)
-target_link_libraries(ishakesum libkeccak.a)
-target_link_libraries(ishakesumd libkeccak.a)
+target_link_libraries(sha3sum libXKCP.a)
+target_link_libraries(sha3sumd libXKCP.a)
+target_link_libraries(ishakesum libXKCP.a)
+target_link_libraries(ishakesumd libXKCP.a)
 
 add_custom_target(KeccakCodePackage)
 add_custom_target(libishake)
@@ -50,5 +50,5 @@ add_dependencies(ishakesum libishake)
 add_dependencies(ishakesumd libishake)
 
 add_executable(testPerformance ${TESTPERF_FILES})
-target_link_libraries(testPerformance libkeccak.a)
+target_link_libraries(testPerformance libXKCP.a)
 add_dependencies(testPerformance libishake)

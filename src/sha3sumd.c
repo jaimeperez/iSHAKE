@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "KeccakCodePackage.h"
+#include "KeccakHash.h"
 #include "utils.h"
 
 #define BLOCK_SIZE 1024

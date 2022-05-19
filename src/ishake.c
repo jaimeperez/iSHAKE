@@ -29,7 +29,7 @@
 #include <string.h>
 #include "ishake.h"
 #include "utils.h"
-#include "KeccakCodePackage.h"
+#include "KeccakHash.h"
 
 
 int _hash_block(
