@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "KeccakCodePackage.h"
+#include "KeccakHash.h"
 #include "utils.h"
 
 #define BLOCK_SIZE 1024
